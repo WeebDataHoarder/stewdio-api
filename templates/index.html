@@ -30,14 +30,28 @@
 			xhr.abort();
 		}
 		xhr = new XMLHttpRequest();
-		xhr.open("GET", "/search/" + qs);
+		xhr.open("GET", "/api/search/" + qs);
 		xhr.onload = function() {
 			var res = JSON.parse(xhr.responseText);
 			var list = document.createElement("ul");
 			for (var i = 0; i < res.length; i++) {
-				var item = document.createElement("li");
-				item.textContent = res[i].hash.substr(0, 7) + " - " + res[i].artist + " - " + res[i].title + " (" + res[i].album + ")";
-				list.appendChild(item);
+				var resi = res[i];
+				var li = document.createElement("li");
+				var item = document.createElement("a");
+				item.href = "/api/request/" + res[i].hash.substr(0, 7);
+				item.onclick = function(e) {
+					e.preventDefault();
+					this.onclick = function (e) {e.preventDefault();};
+					var xhr = new XMLHttpRequest();
+					xhr.open("GET", this.href);
+					xhr.send();
+					var okay = document.createElement("span");
+					okay.textContent = "✔";
+					this.parentNode.insertBefore(okay, this);
+				};
+				item.textContent = resi.hash.substr(0, 7) + " - " + resi.artist + " - " + resi.title + " (" + resi.album + ")";
+				li.appendChild(item);
+				list.appendChild(li);
 			}
 			results.innerHTML = "";
 			results.appendChild(list);
