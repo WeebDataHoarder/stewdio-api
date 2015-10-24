@@ -4,7 +4,7 @@ import os
 import json
 from flask import Flask, request
 import flask
-from whoosh.qparser import QueryParser
+from whoosh.qparser import MultifieldParser
 
 app = Flask(__name__)
 
@@ -16,9 +16,9 @@ def index():
 
 @app.route("/search", methods=["POST"])
 def search():
-	parser = QueryParser("title", ix.schema)
+	parser = MultifieldParser(["title", "artist", "album"], ix.schema)
 	myquery = parser.parse(request.form["q"])
-
+	print(myquery)
 	with ix.searcher() as searcher:
 		res = searcher.search(myquery)
 		return json.dumps([dict(r) for r in res])
