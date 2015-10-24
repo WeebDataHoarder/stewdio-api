@@ -1,8 +1,6 @@
-import os
-import sys
-
 from schema import ix
 
+import os
 import json
 from flask import Flask, request
 import flask
