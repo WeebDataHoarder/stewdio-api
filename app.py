@@ -21,9 +21,6 @@ def search():
 
 	with ix.searcher() as searcher:
 		res = searcher.search(myquery)
-		print(len(res))
-		for r in res:
-			print(r)
 		return json.dumps([dict(r) for r in res])
 
 
