@@ -2,10 +2,16 @@
 import config
 from schema import ix
 
+import sys
 import psycopg2
 import psycopg2.extras
 
 step_size = 1000
+
+limit_path = None
+
+if len(sys.argv) > 1:
+	limit_path = sys.argv[1].replace("%", "\\%").replace("_", "\\_") + "%"
 
 with psycopg2.connect(**config.postgres) as conn:
 	with ix.writer() as writer:
@@ -16,6 +22,7 @@ with psycopg2.connect(**config.postgres) as conn:
 			for start in range(0, last_id, step_size):
 				end = start + step_size - 1
 				print("Inserting/Updating IDs {}-{}…".format(start, end))
+				extra_query = "AND s.location LIKE %s" if limit_path else ""
 				cur.execute("""
 					SELECT s.id AS id, s.hash AS hash, s.location AS path,
 						s.title AS title, ar.name AS artist, al.name AS album,
@@ -25,7 +32,9 @@ with psycopg2.connect(**config.postgres) as conn:
 					LEFT OUTER JOIN albums AS al ON s.album = al.id
 					WHERE
 						s.status IN ('active', 'unlisted') AND
-						s.id BETWEEN %s AND %s;""", (start, end))
+						s.id BETWEEN %s AND %s {};""".format(extra_query),
+					(start, end, limit_path)
+				)
 				for row in cur:
 					row = {k: str(v) for k, v in row.items()}
 					writer.update_document(**row)
