@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Stewdio Search</title>
+	<link href="/static/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+<h1>Stewdio Search</h1>
+
+<div>
+	<form method="POST" action="{{ url_for("search") }}">
+		<input type="text" name="q" id="q" placeholder="Search…"/>
+	</form>
+</div>
+
+<div id="results">
+</div>
+
+<script src="/static/js/jquery-2.1.3.min.js"></script>
+<script src="/static/js/bootstrap.min.js"></script>
+<script type="text/javascript">
+	$("#q").keyup(function () {
+		$.ajax({
+			url: "{{ url_for("search") }}",
+			data: {q: $("#q").val()}
+		}).success(function (data, status, xhr) {
+			$("#results").text(data);
+		});
+	});
+</script>
+</body>
+</html>
