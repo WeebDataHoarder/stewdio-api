@@ -20,7 +20,10 @@ def search(q):
 	myquery = parser.parse(q)
 	with ix.searcher() as searcher:
 		res = searcher.search(myquery, limit=30)
-		return json.dumps([dict(r) for r in res])
+		return flask.Response(
+			json.dumps([dict(r) for r in res]),
+			mimetype="application/json"
+		)
 
 
 if __name__ == '__main__':
