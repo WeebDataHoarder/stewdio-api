@@ -24,7 +24,7 @@ def search():
 		print(len(res))
 		for r in res:
 			print(r)
-		return json.dumps(res)
+		return json.dumps([dict(r) for r in res])
 
 
 if __name__ == '__main__':

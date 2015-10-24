@@ -22,12 +22,24 @@
 <script src="/static/js/jquery-2.1.3.min.js"></script>
 <script src="/static/js/bootstrap.min.js"></script>
 <script type="text/javascript">
+	oldqs = "";
 	$("#q").keyup(function () {
+		var qs = $("#q").val();
+		if(qs == oldqs || qs.length < 2) return;
+		oldqs = qs;
 		$.ajax({
+			type: "POST",
 			url: "{{ url_for("search") }}",
-			data: {q: $("#q").val()}
+			data: {q: qs}
 		}).success(function (data, status, xhr) {
-			$("#results").text(data);
+			var res = JSON.parse(data);
+			var list = document.createElement("ul");
+			for(var i = 0; i < res.length; i++) {
+				var item = document.createElement("li");
+				item.textContent = res[i].hash.substr(0, 7) + " - " + res[i].artist + " - " + res[i].title + " (" + res[i].album + ")";
+				list.appendChild(item);
+			}
+			$("#results").html(list);
 		});
 	});
 </script>
