@@ -14,11 +14,10 @@ def index():
 	return flask.render_template("index.html")
 
 
-@app.route("/search", methods=["POST"])
-def search():
+@app.route("/search/<q>")
+def search(q):
 	parser = MultifieldParser(["title", "artist", "album"], ix.schema)
-	myquery = parser.parse(request.form["q"])
-	print(myquery)
+	myquery = parser.parse(q)
 	with ix.searcher() as searcher:
 		res = searcher.search(myquery)
 		return json.dumps([dict(r) for r in res])
