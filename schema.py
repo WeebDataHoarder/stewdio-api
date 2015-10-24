@@ -1,7 +1,6 @@
-import os
-
 import config
 
+import os
 from whoosh import fields
 from whoosh.filedb.filestore import FileStorage
 
@@ -9,10 +8,10 @@ from whoosh.filedb.filestore import FileStorage
 class StewdioSchema(fields.SchemaClass):
 	id = fields.ID(stored=True, unique=True)
 	hash = fields.ID(stored=True, unique=True)
-	path = fields.ID(stored=True, unique=True)
-	title = fields.TEXT(stored=True)
-	artist = fields.TEXT(stored=True)
-	album = fields.TEXT(stored=True)
+	path = fields.TEXT(stored=True)
+	title = fields.NGRAM(stored=True)
+	artist = fields.NGRAM(stored=True)
+	album = fields.NGRAM(stored=True)
 	duration = fields.NUMERIC(stored=True)
 	status = fields.KEYWORD(stored=True)
 
