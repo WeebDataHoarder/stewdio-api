@@ -19,7 +19,7 @@ def search(q):
 	parser = MultifieldParser(["title", "artist", "album"], ix.schema)
 	myquery = parser.parse(q)
 	with ix.searcher() as searcher:
-		res = searcher.search(myquery)
+		res = searcher.search(myquery, limit=30)
 		return json.dumps([dict(r) for r in res])
 
 
