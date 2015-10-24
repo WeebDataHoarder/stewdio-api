@@ -9,9 +9,9 @@ class StewdioSchema(fields.SchemaClass):
 	id = fields.ID(stored=True, unique=True)
 	hash = fields.ID(stored=True, unique=True)
 	path = fields.TEXT(stored=True)
-	title = fields.NGRAM(stored=True)
-	artist = fields.NGRAM(stored=True)
-	album = fields.NGRAM(stored=True)
+	title = fields.NGRAM(stored=True, phrase=True)
+	artist = fields.NGRAM(stored=True, phrase=True)
+	album = fields.NGRAM(stored=True, phrase=True)
 	duration = fields.NUMERIC(stored=True)
 	status = fields.KEYWORD(stored=True)
 
