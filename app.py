@@ -1,5 +1,6 @@
 from schema import ix
 import config
+from update import update
 
 import os
 import json
@@ -39,6 +40,11 @@ def request(hash):
 		resp = json.dumps(dict(res[0]))
 		redis.lpush("queue", json.dumps({"hash": res[0]["hash"]}))
 		return resp
+
+@app.route("/admin/update_index")
+def update_index():
+	update(flask.request.args.get("path"))
+	return ""
 
 
 if __name__ == '__main__':
