@@ -9,6 +9,8 @@ import psycopg2.extras
 step_size = 1000
 
 def update(limit_path=None):
+	if limit_path:
+		limit_path = limit_path.replace("%", "\\%").replace("_", "\\_") + "%"
 	with psycopg2.connect(**config.postgres) as conn:
 		with ix.writer() as writer:
 			with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
@@ -32,6 +34,6 @@ if __name__ == "__main__":
 	limit_path = None
 
 	if len(sys.argv) > 1:
-		limit_path = sys.argv[1].replace("%", "\\%").replace("_", "\\_") + "%"
+		limit_path = sys.argv[1]
 
 	update(limit_path)
