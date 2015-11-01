@@ -22,10 +22,25 @@
 <script type="text/javascript">
 	var oldqs = "";
 	var xhr = null;
-	document.getElementById("q").addEventListener("keyup", function(e) {
-		var qs = e.target.value;
-		if(qs == oldqs || qs.length < 2) return;
+	var input = document.getElementById("q");
+	var timeout = 150;
+	var timer;
+
+	input.addEventListener("keyup", function(e) {
+		clearTimeout(timer);
+		timer = setTimeout(runQuery, timeout);
+	});
+	input.addEventListener("keydown", function(e) {
+		clearTimeout(timer);
+	});
+	function runQuery() {
+		var qs = input.value;
+		if(qs == oldqs) return;
 		oldqs = qs;
+		if(qs == "") {
+			results.innerHTML = "";
+			return;
+		}
 		if (xhr !== null) {
 			xhr.abort();
 		}
@@ -58,7 +73,7 @@
 			xhr = null;
 		};
 		xhr.send();
-	});
+	}
 </script>
 </body>
 </html>
