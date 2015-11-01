@@ -8,22 +8,35 @@ import psycopg2.extras
 
 step_size = 1000
 
-def update(limit_path=None):
+def update(limit_path=None, limit_id=None):
 	if limit_path:
 		limit_path = limit_path.replace("%", "\\%").replace("_", "\\_") + "%"
 	with ix.writer() as writer:
 		with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
-			extra_query = "AND s.location LIKE %s" if limit_path else ""
+			extra_args = []
+			extra_query = ""
+			if limit_path:
+				extra_query += " AND s.location LIKE %s"
+				extra_args.append(limit_path)
+			if limit_id:
+				extra_query += " AND s.id = %s"
+				extra_args.append(limit_id)
+
 			cur.execute("""
 				SELECT s.id AS id, s.hash AS hash, s.location AS path,
 					s.title AS title, ar.name AS artist, al.name AS album,
-					s.length AS duration, s.status AS status
+					s.length AS duration, s.status AS status,
+					coalesce(string_agg(t.name, ','), '') AS tags
 				FROM songs AS s
 				LEFT OUTER JOIN artists AS ar ON s.artist = ar.id
 				LEFT OUTER JOIN albums AS al ON s.album = al.id
+				LEFT OUTER JOIN taggings AS ts ON s.id = ts.song
+				LEFT OUTER JOIN tags AS t ON ts.tag = t.id
 				WHERE
-					s.status IN ('active', 'unlisted') {};""".format(extra_query),
-				(limit_path,)
+					s.status IN ('active', 'unlisted') {}
+				GROUP BY
+					s.id, s.hash, s.location, s.title, ar.name, al.name, s.length, s.status;""".format(extra_query),
+				extra_args
 			)
 			for row in cur:
 				row = {k: str(v) for k, v in row.items()}
@@ -31,8 +44,12 @@ def update(limit_path=None):
 
 if __name__ == "__main__":
 	limit_path = None
+	limit_id = None
 
 	if len(sys.argv) > 1:
-		limit_path = sys.argv[1]
+		try:
+			limit_id = int(sys.argv[1])
+		except ValueError:
+			limit_path = sys.argv[1]
 
-	update(limit_path)
+	update(limit_path=limit_path, limit_id=limit_id)

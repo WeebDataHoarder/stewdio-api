@@ -46,7 +46,7 @@ def request(hash):
 
 @app.route("/admin/update_index")
 def update_index():
-	update(flask.request.args.get("path"))
+	update(limit_path=flask.request.args.get("path"), limit_id=flask.request.args.get("id"))
 	return ""
 
 
