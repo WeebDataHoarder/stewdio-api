@@ -12,6 +12,7 @@ from whoosh.query import Prefix
 from redis import StrictRedis
 
 app = Flask(__name__)
+app.use_x_sendfile = True
 app.register_blueprint(tagging.api)
 redis = StrictRedis(**config.redis)
 
@@ -43,6 +44,14 @@ def request(hash):
 		resp = json.dumps(dict(res[0]))
 		redis.lpush("queue", json.dumps({"hash": res[0]["hash"]}))
 		return resp
+
+@app.route("/api/download/<hash>")
+def download(hash):
+	with ix.searcher() as searcher:
+		res = searcher.search(Prefix("hash", hash), limit=1)
+		if len(res) == 0:
+			return flask.Response(status=404)
+		return flask.send_file(res[0]["path"], as_attachment=True)
 
 @app.route("/admin/update_index")
 def update_index():
