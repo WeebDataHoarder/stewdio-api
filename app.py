@@ -6,7 +6,7 @@ import os
 import json
 from flask import Flask
 import flask
-from whoosh.qparser import MultifieldParser, GtLtPlugin
+from whoosh.qparser import MultifieldParser, GtLtPlugin, PlusMinusPlugin
 from whoosh.query import Prefix
 from redis import StrictRedis
 
@@ -22,6 +22,7 @@ def index():
 def search(q):
 	parser = MultifieldParser(["title", "artist", "album"], ix.schema)
 	parser.add_plugin(GtLtPlugin())
+	parser.add_plugin(PlusMinusPlugin())
 	myquery = parser.parse(q)
 	print(myquery)
 	with ix.searcher() as searcher:
