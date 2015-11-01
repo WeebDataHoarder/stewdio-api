@@ -20,7 +20,7 @@ def add(cur, song_id, tag):
 		cur.execute("INSERT INTO taggings (song, tag) VALUES (%s, %s)", (song_id, res[0]))
 	except psycopg2.IntegrityError:
 		return {"created": False}, 200
-	update(limit_id=song_id)
+	update(limit_ids=(song_id,))
 	return {"created": True}, 201
 
 @api.route("/<song_id>/remove/<tag>")
@@ -35,7 +35,7 @@ def remove(cur, song_id, tag):
 		cur.execute("DELETE FROM taggings WHERE song = %s AND tag = %s", (song_id, res[0]))
 	except psycopg2.IntegrityError:
 		return {"removed": False}, 200
-	update(limit_id=song_id)
+	update(limit_ids=(song_id,))
 	return {"removed": True}, 201
 
 @api.route("/create/<tag>")

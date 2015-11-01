@@ -8,19 +8,18 @@ import psycopg2.extras
 
 step_size = 1000
 
-def update(limit_path=None, limit_id=None):
-	if limit_path:
-		limit_path = limit_path.replace("%", "\\%").replace("_", "\\_") + "%"
+def update(limit_path=None, limit_ids=None):
 	with ix.writer() as writer:
 		with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
 			extra_args = []
 			extra_query = ""
 			if limit_path:
+				limit_path = limit_path.replace("%", "\\%").replace("_", "\\_") + "%"
 				extra_query += " AND s.location LIKE %s"
 				extra_args.append(limit_path)
-			if limit_id:
-				extra_query += " AND s.id = %s"
-				extra_args.append(limit_id)
+			if limit_ids:
+				extra_query += " AND s.id IN %s"
+				extra_args.append(limit_ids)
 
 			cur.execute("""
 				SELECT s.id AS id, s.hash AS hash, s.location AS path,
@@ -44,12 +43,12 @@ def update(limit_path=None, limit_id=None):
 
 if __name__ == "__main__":
 	limit_path = None
-	limit_id = None
+	limit_ids = []
 
 	if len(sys.argv) > 1:
 		try:
-			limit_id = int(sys.argv[1])
+			limit_ids = (int(sys.argv[1]),)
 		except ValueError:
 			limit_path = sys.argv[1]
 
-	update(limit_path=limit_path, limit_id=limit_id)
+	update(limit_path=limit_path, limit_ids=limit_ids)
