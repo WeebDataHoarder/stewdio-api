@@ -1,6 +1,7 @@
 from schema import ix
 import config
 from update import update
+import tagging
 
 import os
 import json
@@ -11,6 +12,7 @@ from whoosh.query import Prefix
 from redis import StrictRedis
 
 app = Flask(__name__)
+app.register_blueprint(tagging.api)
 redis = StrictRedis(**config.redis)
 
 @app.route("/")
