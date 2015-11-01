@@ -12,7 +12,6 @@ from whoosh.query import Prefix
 from redis import StrictRedis
 
 app = Flask(__name__)
-app.use_x_sendfile = True
 app.register_blueprint(tagging.api)
 redis = StrictRedis(**config.redis)
 
