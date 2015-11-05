@@ -2,6 +2,7 @@ from schema import ix
 import config
 from update import update
 import tagging
+from misc import json_api
 
 import os
 import json
@@ -10,6 +11,7 @@ import flask
 from whoosh.qparser import MultifieldParser, GtLtPlugin, PlusMinusPlugin
 from whoosh.query import Prefix
 from redis import StrictRedis
+from urllib.parse import urlparse, parse_qs
 
 app = Flask(__name__)
 app.register_blueprint(tagging.api)
@@ -52,10 +54,36 @@ def download(hash):
 			return flask.Response(status=404)
 		return flask.send_file(res[0]["path"], as_attachment=True)
 
+@app.route("/api/listeners")
+@json_api
+def listeners():
+	return {
+		"num_listeners": int(redis.get("num_listeners") or 0),
+		"named_listeners": [user.decode("utf-8")
+			for user in redis.smembers("named_listeners")],
+	}
+
 @app.route("/admin/update_index")
 def update_index():
 	id = flask.request.args.get("id")
 	update(limit_path=flask.request.args.get("path"), limit_ids=(id,) if id else None)
+	return ""
+
+@app.route("/icecast", methods=["POST"])
+def icecast_auth():
+	action = flask.request.form["action"]
+	mount = urlparse(flask.request.form["mount"])
+	mount_q = parse_qs(mount.query)
+	mount_userlist = mount_q.get("user")
+	mount_user = mount_userlist[0] if mount_userlist else None
+	if action == "listener_add":
+		if mount_user:
+			redis.sadd("named_listeners", mount_user)
+		redis.incr("num_listeners")
+	if action == "listener_remove":
+		if mount_user:
+			redis.srem("named_listeners", mount_user)
+		redis.decr("num_listeners")
 	return ""
 
 
