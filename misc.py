@@ -1,8 +1,9 @@
-import json
-
 from database import conn
 
+import json
+import flask
 from functools import wraps
+
 
 def with_cur(fn):
 	@wraps(fn)
@@ -24,7 +25,17 @@ def json_api(fn):
 	@wraps(fn)
 	def wrapper(*args, **kwargs):
 		ret = fn(*args, **kwargs)
+		status = None
+		if isinstance(ret, flask.Response):
+			return ret
 		if isinstance(ret, tuple):
-			return tuple([json.dumps(ret[0])] + list(ret[1:]))
-		return json.dumps(ret)
+			ret = ret[0]
+			status = ret[1]
+		return flask.Response(
+			json.dumps(ret),
+			status=status,
+			headers={
+				"Content-Type": "application/json",
+			}
+		)
 	return wrapper

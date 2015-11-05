@@ -23,6 +23,7 @@ def index():
 
 
 @app.route("/api/search/<q>")
+@json_api
 def search(q):
 	parser = MultifieldParser(["title", "artist", "album"], ix.schema)
 	parser.add_plugin(GtLtPlugin())
@@ -31,20 +32,17 @@ def search(q):
 	print(myquery)
 	with ix.searcher() as searcher:
 		res = searcher.search(myquery, limit=30)
-		return flask.Response(
-			json.dumps([dict(r) for r in res]),
-			mimetype="application/json"
-		)
+		return [dict(r) for r in res]
 
 @app.route("/api/request/<hash>")
+@json_api
 def request(hash):
 	with ix.searcher() as searcher:
 		res = searcher.search(Prefix("hash", hash), limit=1)
 		if len(res) == 0:
 			return flask.Response(status=400)
-		resp = json.dumps(dict(res[0]))
 		redis.lpush("queue", json.dumps({"hash": res[0]["hash"]}))
-		return resp
+		return dict(res[0])
 
 @app.route("/api/download/<hash>")
 def download(hash):
