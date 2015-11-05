@@ -61,6 +61,17 @@ def listeners():
 			for user in redis.smembers("named_listeners")],
 	}
 
+@app.route("/api/playing")
+@json_api
+def playing():
+	data = json.loads(redis.get("np_data").decode("utf-8"))
+	return {
+		"title": data.get("title"),
+		"artist": data.get("artist"),
+		"album": data.get("album"),
+		"hash": data.get("hash"),
+	}
+
 @app.route("/admin/update_index")
 def update_index():
 	id = flask.request.args.get("id")
