@@ -1,6 +1,6 @@
 import psycopg2
 
-from misc import with_cur, json_api
+from misc import with_pg_cursor, json_api
 from update import update
 
 from flask import Blueprint
@@ -9,7 +9,7 @@ from flask import Blueprint
 api = Blueprint("tagging", "tagging", url_prefix="/api/tag")
 
 @api.route("/<song_id>/add/<tag>")
-@with_cur
+@with_pg_cursor
 @json_api
 def add(cur, song_id, tag):
 	cur.execute("SELECT id FROM tags WHERE name = %s", (tag,))
@@ -24,7 +24,7 @@ def add(cur, song_id, tag):
 	return {"created": True}, 201
 
 @api.route("/<song_id>/remove/<tag>")
-@with_cur
+@with_pg_cursor
 @json_api
 def remove(cur, song_id, tag):
 	cur.execute("SELECT id FROM tags WHERE name = %s", (tag,))
@@ -39,7 +39,7 @@ def remove(cur, song_id, tag):
 	return {"removed": True}, 201
 
 @api.route("/create/<tag>")
-@with_cur
+@with_pg_cursor
 @json_api
 def create(cur, tag):
 	try:

@@ -1,25 +1,32 @@
-from database import conn
+import config
 
 import json
 import flask
 from functools import wraps
 
 
-def with_cur(fn):
+def with_pg_cursor(fn):
+	"""
+	Injects an argument `cur` containing a postgres cursor into the function arguments. Autocommits.
+	"""
 	@wraps(fn)
 	def wrapper(*args, **kwargs):
-		with conn.cursor() as cur:
-			if "cur" in kwargs:
-				raise TypeError("Function may not have a keyword argument named cur")
-			try:
-				kwargs["cur"] = cur
-				ret = fn(*args, **kwargs)
-				conn.commit()
-				return ret
-			except:
-				conn.rollback()
-				raise
+		if "cur" in kwargs:
+			raise TypeError("Function may not have a keyword argument named cur")
+		conn = config.postgres.getconn()
+		cur = conn.cursor()
+		kwargs["cur"] = cur
+		try:
+			ret = fn(*args, **kwargs)
+			conn.commit()
+			return ret
+		except:
+			conn.rollback()
+			raise
+		finally:
+			config.postgres.putconn(conn)
 	return wrapper
+
 
 def json_api(fn):
 	@wraps(fn)

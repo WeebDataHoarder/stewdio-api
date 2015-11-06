@@ -1,5 +1,5 @@
 from schema import ix
-import config
+from config import redis
 from update import update
 import tagging
 from misc import json_api
@@ -10,12 +10,10 @@ from flask import Flask
 import flask
 from whoosh.qparser import MultifieldParser, GtLtPlugin, PlusMinusPlugin
 from whoosh.query import Prefix
-from redis import StrictRedis
 from urllib.parse import urlparse, parse_qs
 
 app = Flask(__name__)
 app.register_blueprint(tagging.api)
-redis = StrictRedis(**config.redis)
 
 @app.route("/")
 def index():

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from database import conn
+import config
 from schema import ix
 
 import sys
@@ -10,7 +10,7 @@ step_size = 1000
 
 def update(limit_path=None, limit_ids=None):
 	with ix.writer() as writer:
-		with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
+		with config.postgres.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
 			extra_args = []
 			extra_query = ""
 			if limit_path:
