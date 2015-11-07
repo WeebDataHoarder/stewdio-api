@@ -1,3 +1,4 @@
+import eventlet
 from schema import ix
 from config import redis
 from update import update
@@ -79,13 +80,15 @@ def playing():
 	return format_playing(data)
 
 def playing_publisher():
+	L.info("Starting PubSub listener")
 	pubsub = redis.pubsub()
 	pubsub.subscribe("playing")
 	for m in pubsub.listen():
 		if m["type"] != "message":
 			continue
 		L.debug("Emitting now playing info")
-		socketio.emit("playing", format_playing(json.loads(m["data"])))
+		socketio.emit("playing", format_playing(json.loads(m["data"].decode("utf-8"))))
+eventlet.spawn_n(playing_publisher)
 
 @app.route("/admin/update_index")
 def update_index():
@@ -117,5 +120,4 @@ def icecast_auth():
 
 if __name__ == '__main__':
 	app.debug = os.environ.get("FLASK_DEBUG", "0").lower() in ("1", "true", "on")
-	socketio.server.eio._start_background_task(playing_publisher)
 	socketio.run(app)
