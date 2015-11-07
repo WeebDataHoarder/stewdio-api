@@ -8,7 +8,7 @@ from misc import json_api
 import os
 import json
 import flask
-from flask.ext.socketio import SocketIO
+from flask.ext.socketio import SocketIO, emit
 from whoosh.qparser import MultifieldParser, GtLtPlugin, PlusMinusPlugin
 from whoosh.query import Prefix
 from urllib.parse import urlparse, parse_qs
@@ -92,7 +92,7 @@ eventlet.spawn_n(playing_publisher)
 
 @socketio.on("connect")
 def ws_connect():
-	socketio.emit("playing", format_playing(json.loads(redis.get("np_data").decode("utf-8"))))
+	emit("playing", format_playing(json.loads(redis.get("np_data").decode("utf-8"))))
 
 @app.route("/admin/update_index")
 def update_index():
