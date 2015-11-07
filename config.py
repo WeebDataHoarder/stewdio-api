@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from psycopg2.pool import ThreadedConnectionPool
 from redis import StrictRedis, BlockingConnectionPool
@@ -16,3 +17,14 @@ redis = StrictRedis(
 		max_connections=10
 	)
 )
+
+fmt = logging.Formatter("[%(asctime)s] %(levelname)s: %(pathname)s:%(funcName)s(%(lineno)s): %(message)s")
+logger = logging.getLogger("stewdio")
+logger.setLevel(logging.DEBUG)
+
+# stderr logging
+sh = logging.StreamHandler()
+sh.setLevel(logging.DEBUG)
+sh.setFormatter(fmt)
+logger.addHandler(sh)
+

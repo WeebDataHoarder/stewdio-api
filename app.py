@@ -11,6 +11,9 @@ from flask.ext.socketio import SocketIO
 from whoosh.qparser import MultifieldParser, GtLtPlugin, PlusMinusPlugin
 from whoosh.query import Prefix
 from urllib.parse import urlparse, parse_qs
+import logging
+
+L = logging.getLogger("stewdio.app")
 
 app = flask.Flask(__name__)
 app.register_blueprint(tagging.api)
@@ -28,7 +31,7 @@ def search(q):
 	parser.add_plugin(GtLtPlugin())
 	parser.add_plugin(PlusMinusPlugin())
 	myquery = parser.parse(q)
-	print(myquery)
+	L.debug("Search query: {}".format(myquery))
 	with ix.searcher() as searcher:
 		res = searcher.search(myquery, limit=30)
 		return [dict(r) for r in res]
@@ -41,6 +44,7 @@ def request(hash):
 		if len(res) == 0:
 			return flask.Response(status=400)
 		redis.lpush("queue", json.dumps({"hash": res[0]["hash"]}))
+		L.debug("Song {} requested".format(res[0]["hash"]))
 		return dict(res[0])
 
 @app.route("/api/download/<hash>")
@@ -80,6 +84,7 @@ def playing_publisher():
 	for m in pubsub.listen():
 		if m["type"] != "message":
 			continue
+		L.debug("Emitting now playing info")
 		socketio.emit("playing", format_playing(json.loads(m["data"])))
 
 @app.route("/admin/update_index")
