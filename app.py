@@ -90,6 +90,10 @@ def playing_publisher():
 		socketio.emit("playing", format_playing(json.loads(m["data"].decode("utf-8"))))
 eventlet.spawn_n(playing_publisher)
 
+@socketio.on("connect")
+def ws_connect():
+	socketio.emit("playing", format_playing(json.loads(redis.get("np_data").decode("utf-8"))))
+
 @app.route("/admin/update_index")
 def update_index():
 	id = flask.request.args.get("id")
