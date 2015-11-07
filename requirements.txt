@@ -1,3 +1,6 @@
 flask
 whoosh
+psycopg2
 redis
+flask-socketio
+eventlet

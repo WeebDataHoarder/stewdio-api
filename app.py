@@ -6,14 +6,15 @@ from misc import json_api
 
 import os
 import json
-from flask import Flask
 import flask
+from flask.ext.socketio import SocketIO
 from whoosh.qparser import MultifieldParser, GtLtPlugin, PlusMinusPlugin
 from whoosh.query import Prefix
 from urllib.parse import urlparse, parse_qs
 
-app = Flask(__name__)
+app = flask.Flask(__name__)
 app.register_blueprint(tagging.api)
+socketio = SocketIO(app)
 
 @app.route("/")
 def index():
@@ -59,16 +60,27 @@ def listeners():
 			for user in redis.smembers("named_listeners")],
 	}
 
-@app.route("/api/playing")
-@json_api
-def playing():
-	data = json.loads(redis.get("np_data").decode("utf-8"))
+def format_playing(data):
 	return {
 		"title": data.get("title"),
 		"artist": data.get("artist"),
 		"album": data.get("album"),
 		"hash": data.get("hash"),
 	}
+
+@app.route("/api/playing")
+@json_api
+def playing():
+	data = json.loads(redis.get("np_data").decode("utf-8"))
+	return format_playing(data)
+
+def playing_publisher():
+	pubsub = redis.pubsub()
+	pubsub.subscribe("playing")
+	for m in pubsub.listen():
+		if m["type"] != "message":
+			continue
+		socketio.emit("playing", format_playing(json.loads(m["data"])))
 
 @app.route("/admin/update_index")
 def update_index():
@@ -100,4 +112,5 @@ def icecast_auth():
 
 if __name__ == '__main__':
 	app.debug = os.environ.get("FLASK_DEBUG", "0").lower() in ("1", "true", "on")
-	app.run()
+	socketio.server.eio._start_background_task(playing_publisher)
+	socketio.run(app)
