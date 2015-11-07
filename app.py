@@ -47,7 +47,7 @@ def request(hash):
 		if len(res) == 0:
 			return flask.Response(status=400)
 		redis.lpush("queue", json.dumps({"hash": res[0]["hash"]}))
-		L.debug("Song {} requested".format(res[0]["hash"]))
+		L.info("Song {} requested".format(res[0]["hash"]))
 		return dict(res[0])
 
 @app.route("/api/download/<hash>")
@@ -106,27 +106,32 @@ def update_listener_count():
 	icecast_status = requests.get(config.icecast_json).json()
 	num_listeners = sum(source["listeners"] for source in icecast_status["icestats"]["source"])
 	redis.set("num_listeners", num_listeners)
-	redis.publish("listener", "count:" + num_listeners)
+	redis.publish("listener", "count:{}".format(num_listeners))
 
 @app.route("/icecast", methods=["POST"])
 def icecast_auth():
 	action = flask.request.form["action"]
+	L.info("Icecast auth action: {}".format(action))
 	mount = urlparse(flask.request.form["mount"])
 	mount_q = parse_qs(mount.query)
 	mount_userlist = mount_q.get("user")
 	mount_user = mount_userlist[0] if mount_userlist else None
+	if not mount.path.startswith("/stream"):
+		# requesting the web interface counts as listener too
+		return ""
 	if action == "listener_add":
 		if mount_user:
 			if int(redis.incr("named_listeners:" + mount_user)) > 1:
 				redis.publish("listener", "connect:" + mount_user)
 			redis.sadd("named_listeners", mount_user)
+		eventlet.spawn_after(0.5, update_listener_count)
 	if action == "listener_remove":
 		if mount_user:
 			if int(redis.decr("named_listeners:" + mount_user) or 0) <= 0:
 				redis.delete("named_listeners:" + mount_user)
 				redis.srem("named_listeners", mount_user)
 				redis.publish("listener", "disconnect:" + mount_user)
-	eventlet.spawn_after(0.5, update_listener_count)
+		eventlet.spawn_after(0.5, update_listener_count)
 	return ""
 
 
