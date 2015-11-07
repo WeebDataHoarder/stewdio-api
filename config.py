@@ -4,6 +4,7 @@ from psycopg2.pool import ThreadedConnectionPool
 from redis import StrictRedis, BlockingConnectionPool
 
 index_dir = Path(__file__).parent / "indexdir"
+icecast_json = "http://127.0.0.1:8000/status-json.xsl"
 
 postgres = ThreadedConnectionPool(
 	minconn=1,

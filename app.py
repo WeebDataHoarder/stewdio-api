@@ -1,6 +1,6 @@
-import eventlet
 from schema import ix
 from config import redis
+import config
 from update import update
 import tagging
 from misc import json_api
@@ -12,6 +12,8 @@ from flask.ext.socketio import SocketIO, emit
 from whoosh.qparser import MultifieldParser, GtLtPlugin, PlusMinusPlugin
 from whoosh.query import Prefix
 from urllib.parse import urlparse, parse_qs
+import eventlet
+import requests
 import logging
 
 L = logging.getLogger("stewdio.app")
@@ -112,13 +114,16 @@ def icecast_auth():
 			if int(redis.incr("named_listeners:" + mount_user)) > 1:
 				redis.publish("listener", "connect:" + mount_user)
 			redis.sadd("named_listeners", mount_user)
-		redis.incr("num_listeners")
 	if action == "listener_remove":
 		if mount_user:
-			if int(redis.decr("named_listeners:" + mount_user) or 0) == 0:
+			if int(redis.decr("named_listeners:" + mount_user) or 0) <= 0:
+				redis.delete("named_listeners:" + mount_user)
 				redis.srem("named_listeners", mount_user)
 				redis.publish("listener", "disconnect:" + mount_user)
-		redis.decr("num_listeners")
+	icecast_status = requests.get(config.icecast_json).json()
+	num_listeners = sum(source["listeners"] for source in icecast_status["icestats"]["source"])
+	redis.set("num_listeners", num_listeners)
+	redis.publish("listener", "count:" + num_listeners)
 	return ""
 
 

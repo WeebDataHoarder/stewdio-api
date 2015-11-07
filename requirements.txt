@@ -5,3 +5,4 @@ redis
 flask-socketio
 eventlet
 gunicorn
+requests
