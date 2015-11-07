@@ -89,7 +89,7 @@ def playing_publisher():
 		if m["type"] != "message":
 			continue
 		L.debug("Emitting now playing info")
-		socketio.emit("playing", format_playing(json.loads(m["data"].decode("utf-8"))))
+		socketio.emit("playing", format_playing(json.loads(redis.get("np_data").decode("utf-8"))))
 eventlet.spawn_n(playing_publisher)
 
 @socketio.on("connect")
