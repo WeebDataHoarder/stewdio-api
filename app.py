@@ -102,6 +102,12 @@ def update_index():
 	update(limit_path=flask.request.args.get("path"), limit_ids=(id,) if id else None)
 	return ""
 
+def update_listener_count():
+	icecast_status = requests.get(config.icecast_json).json()
+	num_listeners = sum(source["listeners"] for source in icecast_status["icestats"]["source"])
+	redis.set("num_listeners", num_listeners)
+	redis.publish("listener", "count:" + num_listeners)
+
 @app.route("/icecast", methods=["POST"])
 def icecast_auth():
 	action = flask.request.form["action"]
@@ -120,10 +126,7 @@ def icecast_auth():
 				redis.delete("named_listeners:" + mount_user)
 				redis.srem("named_listeners", mount_user)
 				redis.publish("listener", "disconnect:" + mount_user)
-	icecast_status = requests.get(config.icecast_json).json()
-	num_listeners = sum(source["listeners"] for source in icecast_status["icestats"]["source"])
-	redis.set("num_listeners", num_listeners)
-	redis.publish("listener", "count:" + num_listeners)
+	eventlet.spawn_after(0.5, update_listener_count)
 	return ""
 
 
