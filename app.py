@@ -30,7 +30,7 @@ def index():
 @app.route("/api/search/<q>")
 @json_api
 def search(q):
-	parser = MultifieldParser(["title", "artist", "album"], ix.schema)
+	parser = MultifieldParser(["title", "artist"], ix.schema)
 	parser.add_plugin(GtLtPlugin())
 	parser.add_plugin(PlusMinusPlugin())
 	myquery = parser.parse(q)
