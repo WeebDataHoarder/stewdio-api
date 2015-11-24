@@ -3,7 +3,8 @@ from config import redis
 import config
 from update import update
 import tagging
-from misc import json_api
+from misc import json_api, with_pg_cursor
+
 
 import os
 import json
@@ -12,6 +13,7 @@ from flask.ext.socketio import SocketIO, emit
 from whoosh.qparser import MultifieldParser, GtLtPlugin, PlusMinusPlugin
 from whoosh.query import Prefix
 from urllib.parse import urlparse, parse_qs
+import psycopg2.extras
 import eventlet
 import requests
 import logging
@@ -80,6 +82,30 @@ def format_playing(data):
 def playing():
 	data = json.loads(redis.get("np_data").decode("utf-8"))
 	return format_playing(data)
+
+@app.route("/api/favorites/<user>")
+@with_pg_cursor(cursor_factory=psycopg2.extras.DictCursor)
+@json_api
+def favorites(cur, user):
+	cur.execute("""
+			SELECT s.id AS id, s.hash AS hash, s.location AS path,
+				s.title AS title, ar.name AS artist, al.name AS album,
+				s.length AS duration, s.status AS status,
+				coalesce(string_agg(t.name, ','), '') AS tags
+			FROM favorites AS f
+			LEFT OUTER JOIN users AS u ON u.id = f.account
+			LEFT OUTER JOIN songs AS s ON f.song = s.id
+			LEFT OUTER JOIN artists AS ar ON s.artist = ar.id
+			LEFT OUTER JOIN albums AS al ON s.album = al.id
+			LEFT OUTER JOIN taggings AS ts ON s.id = ts.song
+			LEFT OUTER JOIN tags AS t ON ts.tag = t.id
+			WHERE
+				u.nick = %s
+			GROUP BY
+				s.id, s.hash, s.location, s.title, ar.name, al.name, s.length, s.status;""",
+		(user,)
+	)
+	return [dict(row) for row in cur]
 
 def playing_publisher():
 	L.info("Starting PubSub listener")
