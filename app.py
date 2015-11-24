@@ -88,21 +88,21 @@ def playing():
 @json_api
 def favorites(cur, user):
 	cur.execute("""
-			SELECT s.id AS id, s.hash AS hash, s.location AS path,
+			SELECT f.song AS id, s.hash AS hash, s.location AS path,
 				s.title AS title, ar.name AS artist, al.name AS album,
 				s.length AS duration, s.status AS status,
-				coalesce(string_agg(t.name, ','), '') AS tags
+				array_remove(array_agg(t.name), NULL) AS tags
 			FROM favorites AS f
-			LEFT OUTER JOIN users AS u ON u.id = f.account
-			LEFT OUTER JOIN songs AS s ON f.song = s.id
-			LEFT OUTER JOIN artists AS ar ON s.artist = ar.id
-			LEFT OUTER JOIN albums AS al ON s.album = al.id
-			LEFT OUTER JOIN taggings AS ts ON s.id = ts.song
-			LEFT OUTER JOIN tags AS t ON ts.tag = t.id
+			JOIN users AS u ON u.id = f.account
+			JOIN songs AS s ON f.song = s.id
+			LEFT JOIN artists AS ar ON s.artist = ar.id
+			LEFT JOIN albums AS al ON s.album = al.id
+			LEFT JOIN taggings AS ts ON s.id = ts.song
+			LEFT JOIN tags AS t ON ts.tag = t.id
 			WHERE
 				u.nick = %s
 			GROUP BY
-				s.id, s.hash, s.location, s.title, ar.name, al.name, s.length, s.status;""",
+				f.song, s.hash, s.location, s.title, ar.name, al.name, s.length, s.status;""",
 		(user,)
 	)
 	return [dict(row) for row in cur]
