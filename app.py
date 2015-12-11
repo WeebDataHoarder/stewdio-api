@@ -107,6 +107,41 @@ def favorites(cur, user):
 	)
 	return [dict(row) for row in cur]
 
+@app.route("/api/common_favorites/<users>")
+@with_pg_cursor(cursor_factory=psycopg2.extras.DictCursor)
+@json_api
+def common_favorites(cur, users):
+	cur.execute("""
+			SELECT u.id, array_agg(f.song)
+			FROM favorites AS f
+			JOIN users AS u ON u.id = f.account
+			WHERE
+				u.nick IN %s
+			GROUP BY
+				u.id;""",
+		(tuple(users.split(",")),)
+	)
+	songs = set(cur.fetchone()[1])
+	for user_id, user_songs in cur:
+		songs.intersection_update(user_songs)
+	cur.execute("""
+			SELECT s.id AS id, s.hash AS hash, s.location AS path,
+				s.title AS title, ar.name AS artist, al.name AS album,
+				s.length AS duration, s.status AS status,
+				array_remove(array_agg(t.name), NULL) AS tags
+			FROM  songs AS s
+			LEFT JOIN artists AS ar ON s.artist = ar.id
+			LEFT JOIN albums AS al ON s.album = al.id
+			LEFT JOIN taggings AS ts ON s.id = ts.song
+			LEFT JOIN tags AS t ON ts.tag = t.id
+			WHERE
+				s.id IN %s
+			GROUP BY
+				s.id, s.hash, s.location, s.title, ar.name, al.name, s.length, s.status;""",
+		(tuple(songs),)
+	)
+	return [dict(row) for row in cur]
+
 def playing_publisher():
 	L.info("Starting PubSub listener")
 	pubsub = redis.pubsub()
