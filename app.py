@@ -151,12 +151,13 @@ def common_favorites(users):
 			map(set, songs), set(next(songs, ())))
 	return get_song_info(unique_songs)
 
-@app.route("/api/unique_favorites/<users>")
+@app.route("/api/unique_favorites/<user>/<others>")
 @json_api
-def unique_favorites(users):
-	songs = iter(get_favs(users.split(",")).values())
-	unique_songs = reduce(lambda a, b: a.symmetric_difference(b),
-			map(set, songs), set(next(songs, ())))
+def unique_favorites(user, others):
+	songs = get_favs((user,))[user]
+	others_songs = iter(get_favs(others.split(",")).values())
+	unique_songs = reduce(lambda a, b: a.difference(b),
+			map(set, others_songs), set(songs))
 	return get_song_info(unique_songs)
 
 def playing_publisher():
