@@ -1,3 +1,5 @@
+from functools import reduce
+
 from schema import ix
 from config import redis
 import config
@@ -107,23 +109,22 @@ def favorites(cur, user):
 	)
 	return [dict(row) for row in cur]
 
-@app.route("/api/common_favorites/<users>")
-@with_pg_cursor(cursor_factory=psycopg2.extras.DictCursor)
-@json_api
-def common_favorites(cur, users):
+@with_pg_cursor()
+def get_favs(users, cur):
 	cur.execute("""
-			SELECT u.id, array_agg(f.song)
+			SELECT u.nick, array_agg(f.song)
 			FROM favorites AS f
 			JOIN users AS u ON u.id = f.account
 			WHERE
 				u.nick IN %s
 			GROUP BY
 				u.id;""",
-		(tuple(users.split(",")),)
+		(tuple(users),)
 	)
-	songs = set(cur.fetchone()[1])
-	for user_id, user_songs in cur:
-		songs.intersection_update(user_songs)
+	return {row[0]: row[1] for row in cur}
+
+@with_pg_cursor(cursor_factory=psycopg2.extras.DictCursor)
+def get_song_info(ids, cur):
 	cur.execute("""
 			SELECT s.id AS id, s.hash AS hash, s.location AS path,
 				s.title AS title, ar.name AS artist, al.name AS album,
@@ -138,9 +139,25 @@ def common_favorites(cur, users):
 				s.id IN %s
 			GROUP BY
 				s.id, s.hash, s.location, s.title, ar.name, al.name, s.length, s.status;""",
-		(tuple(songs),)
+		(tuple(ids),)
 	)
 	return [dict(row) for row in cur]
+
+@app.route("/api/common_favorites/<users>")
+@json_api
+def common_favorites(users):
+	songs = iter(get_favs(users.split(",")).values())
+	unique_songs = reduce(lambda a, b: a.intersection(b),
+			map(set, songs), set(next(songs, ())))
+	return get_song_info(unique_songs)
+
+@app.route("/api/unique_favorites/<users>")
+@json_api
+def unique_favorites(users):
+	songs = iter(get_favs(users.split(",")).values())
+	unique_songs = reduce(lambda a, b: a.symmetric_difference(b),
+			map(set, songs), set(next(songs, ())))
+	return get_song_info(unique_songs)
 
 def playing_publisher():
 	L.info("Starting PubSub listener")
