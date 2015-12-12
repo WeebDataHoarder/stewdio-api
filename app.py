@@ -85,30 +85,6 @@ def playing():
 	data = json.loads(redis.get("np_data").decode("utf-8"))
 	return format_playing(data)
 
-@app.route("/api/favorites/<user>")
-@with_pg_cursor(cursor_factory=psycopg2.extras.DictCursor)
-@json_api
-def favorites(cur, user):
-	cur.execute("""
-			SELECT f.song AS id, s.hash AS hash, s.location AS path,
-				s.title AS title, ar.name AS artist, al.name AS album,
-				s.length AS duration, s.status AS status,
-				array_remove(array_agg(t.name), NULL) AS tags
-			FROM favorites AS f
-			JOIN users AS u ON u.id = f.account
-			JOIN songs AS s ON f.song = s.id
-			LEFT JOIN artists AS ar ON s.artist = ar.id
-			LEFT JOIN albums AS al ON s.album = al.id
-			LEFT JOIN taggings AS ts ON s.id = ts.song
-			LEFT JOIN tags AS t ON ts.tag = t.id
-			WHERE
-				u.nick = %s
-			GROUP BY
-				f.song, s.hash, s.location, s.title, ar.name, al.name, s.length, s.status;""",
-		(user,)
-	)
-	return [dict(row) for row in cur]
-
 @with_pg_cursor()
 def get_favs(users, cur):
 	cur.execute("""
@@ -142,6 +118,11 @@ def get_song_info(ids, cur):
 		(tuple(ids),)
 	)
 	return [dict(row) for row in cur]
+
+@app.route("/api/favorites/<user>")
+@json_api
+def favorites(user):
+	return [dict(songinfo) for songinfo in get_song_info(get_favs((user,))[user])]
 
 @app.route("/api/common_favorites/<users>")
 @json_api
