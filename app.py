@@ -30,10 +30,7 @@ socketio = SocketIO(app)
 def index():
 	return flask.render_template("index.html")
 
-
-@app.route("/api/search/<q>")
-@json_api
-def search(q):
+def search_internal(q):
 	parser = MultifieldParser(["title", "artist"], ix.schema)
 	parser.add_plugin(GtLtPlugin())
 	parser.add_plugin(PlusMinusPlugin())
@@ -42,6 +39,11 @@ def search(q):
 	with ix.searcher() as searcher:
 		res = searcher.search(myquery, limit=30)
 		return [dict(r) for r in res]
+
+@app.route("/api/search/<q>")
+@json_api
+def search(q):
+	return search_internal(q)
 
 def queue_song(song):
 		redis.lpush("queue", json.dumps({"hash": song["hash"]}))
@@ -71,6 +73,15 @@ def request_favorite(cur, user, num=1):
 	for song in cur:
 		ret.append(queue_song(song))
 	return ret
+
+@app.route("/api/request/random/<terms>")
+@json_api
+def request_random(terms):
+	songs = search_internal(terms)
+	if not songs:
+		return flask.Response(status=404)
+	song = random.choice(songs)
+	return queue_song(song)
 
 @app.route("/api/download/<hash>")
 def download(hash):
