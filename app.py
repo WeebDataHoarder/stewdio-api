@@ -211,8 +211,9 @@ def remove_favorite(user, hash, cur=None):
 @app.route("/api/queue")
 @json_api
 def get_queue():
-	queued_songs = map(lambda x: json.loads(x.decode("utf-8")), redis.lrange("queue", 0, -1))
-	return get_song_info(hashes=(s["hash"] for s in queued_songs))
+	queued_songs = [json.loads(x.decode("utf-8"))["hash"] for x in redis.lrange("queue", 0, -1)]
+	song_infos = {s["hash"]: s for s in get_song_info(hashes=queued_songs)}
+	return [song_infos[hash] for hash in reversed(queued_songs)]
 
 def playing_publisher():
 	L.info("Starting PubSub listener")
