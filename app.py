@@ -104,7 +104,7 @@ def playing():
 	return format_playing(data)
 
 @with_pg_cursor()
-def get_favs(users, cur):
+def get_favs(users, cur=None):
 	cur.execute("""
 			SELECT u.nick, array_agg(f.song)
 			FROM favorites AS f
@@ -118,7 +118,9 @@ def get_favs(users, cur):
 	return {row[0]: row[1] for row in cur}
 
 @with_pg_cursor(cursor_factory=psycopg2.extras.DictCursor)
-def get_song_info(ids, cur):
+def get_song_info(ids=None, hashes=None, cur=None):
+	search_field = "id" if not hashes else "hash"
+	search_values = ids if not hashes else hashes
 	cur.execute("""
 			SELECT s.id AS id, s.hash AS hash, s.location AS path,
 				s.title AS title, ar.name AS artist, al.name AS album,
@@ -130,10 +132,11 @@ def get_song_info(ids, cur):
 			LEFT JOIN taggings AS ts ON s.id = ts.song
 			LEFT JOIN tags AS t ON ts.tag = t.id
 			WHERE
-				s.id IN %s
+				s.{} IN %s
 			GROUP BY
-				s.id, s.hash, s.location, s.title, ar.name, al.name, s.length, s.status;""",
-		(tuple(ids),)
+				s.id, s.hash, s.location, s.title,
+				ar.name, al.name, s.length, s.status;""".format(search_field),
+		(tuple(search_values),)
 	)
 	return [dict(row) for row in cur]
 
@@ -158,6 +161,12 @@ def unique_favorites(user, others):
 	unique_songs = reduce(lambda a, b: a.difference(b),
 			map(set, others_songs), set(songs))
 	return get_song_info(unique_songs)
+
+@app.route("/api/queue")
+@json_api
+def get_queue():
+	queued_songs = map(lambda x: json.loads(x.decode("utf-8")), redis.lrange("queue", 0, -1))
+	return get_song_info(hashes=(s["hash"] for s in queued_songs))
 
 def playing_publisher():
 	L.info("Starting PubSub listener")
