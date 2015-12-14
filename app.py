@@ -1,5 +1,3 @@
-from functools import reduce
-
 from schema import ix
 from config import redis
 import config
@@ -13,11 +11,13 @@ import json
 import flask
 from flask.ext.socketio import SocketIO, emit
 from whoosh.qparser import MultifieldParser, GtLtPlugin, PlusMinusPlugin
-from whoosh.query import Prefix
+from whoosh.query import Prefix, Term
 from urllib.parse import urlparse, parse_qs
 import psycopg2.extras
 import eventlet
 import requests
+import random
+from functools import reduce
 import logging
 
 L = logging.getLogger("stewdio.app")
@@ -43,16 +43,34 @@ def search(q):
 		res = searcher.search(myquery, limit=30)
 		return [dict(r) for r in res]
 
+def queue_song(song):
+		redis.lpush("queue", json.dumps({"hash": song["hash"]}))
+		L.info("Song {} requested".format(song["hash"]))
+		return dict(song)
+
 @app.route("/api/request/<hash>")
 @json_api
 def request(hash):
 	with ix.searcher() as searcher:
 		res = searcher.search(Prefix("hash", hash), limit=1)
 		if len(res) == 0:
-			return flask.Response(status=400)
-		redis.lpush("queue", json.dumps({"hash": res[0]["hash"]}))
-		L.info("Song {} requested".format(res[0]["hash"]))
-		return dict(res[0])
+			return flask.Response(status=404)
+		return queue_song(res[0])
+
+@app.route("/api/request/favorite/<user>")
+@with_pg_cursor(cursor_factory=psycopg2.extras.DictCursor)
+@json_api
+def request_favorite(cur, user, num=1):
+	if "num" in flask.request.args:
+		num = int(flask.request.args["num"])
+	favs = get_favs((user,))[user]
+	random.shuffle(favs)
+	favs = favs[:num]
+	cur.execute("""SELECT hash FROM songs WHERE id IN %s;""", (tuple(favs),))
+	ret = []
+	for song in cur:
+		ret.append(queue_song(song))
+	return ret
 
 @app.route("/api/download/<hash>")
 def download(hash):
