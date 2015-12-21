@@ -176,7 +176,11 @@ def unique_favorites(user, others):
 @app.route("/api/favorites/<user>/<hash>", methods=["PUT"])
 @with_pg_cursor()
 def add_favorite(user, hash, cur=None):
-	int(hash, 16)  # validate hex
+	if hash == "playing":
+		data = json.loads(redis.get("np_data").decode("utf-8"))
+		hash = data["hash"]
+	else:
+		int(hash, 16)  # validate hex
 	hash += "%"
 	cur.execute("SELECT id FROM songs WHERE hash ILIKE %s", (hash,))
 	song_id = cur.fetchone()
@@ -196,7 +200,11 @@ def add_favorite(user, hash, cur=None):
 @app.route("/api/favorites/<user>/<hash>", methods=["DELETE"])
 @with_pg_cursor()
 def remove_favorite(user, hash, cur=None):
-	int(hash, 16)  # validate hex
+	if hash == "playing":
+		data = json.loads(redis.get("np_data").decode("utf-8"))
+		hash = data["hash"]
+	else:
+		int(hash, 16)  # validate hex
 	hash += "%"
 	cur.execute("SELECT id FROM songs WHERE hash ILIKE %s", (hash,))
 	song_id = cur.fetchone()
