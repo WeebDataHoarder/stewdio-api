@@ -130,8 +130,8 @@ def get_favs(users, cur=None):
 
 @with_pg_cursor(cursor_factory=psycopg2.extras.DictCursor)
 def get_song_info(ids=None, hashes=None, cur=None):
-	search_field = "id" if not hashes else "hash"
-	search_values = ids if not hashes else hashes
+	search_field = "id" if hashes is None else "hash"
+	search_values = ids if hashes is None else hashes
 	cur.execute("""
 			SELECT s.id AS id, s.hash AS hash, s.location AS path,
 				s.title AS title, ar.name AS artist, al.name AS album,
@@ -220,6 +220,8 @@ def remove_favorite(user, hash, cur=None):
 @json_api
 def get_queue():
 	queued_songs = [json.loads(x.decode("utf-8"))["hash"] for x in redis.lrange("queue", 0, -1)]
+	if not queued_songs:
+		return []
 	song_infos = {s["hash"]: s for s in get_song_info(hashes=queued_songs)}
 	return [song_infos[hash] for hash in reversed(queued_songs)]
 
