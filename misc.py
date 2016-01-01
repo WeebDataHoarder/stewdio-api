@@ -13,7 +13,8 @@ def with_pg_cursor(*cur_args, **cur_kwargs):
 		@wraps(fn)
 		def wrapper(*args, **kwargs):
 			if "cur" in kwargs:
-				raise TypeError("Function may not have a keyword argument named cur")
+				# pg cursor is given by the caller already, which also takes care of committing
+				return fn(*args, **kwargs)
 			conn = config.postgres.getconn()
 			cur = conn.cursor(*cur_args, **cur_kwargs)
 			kwargs["cur"] = cur
