@@ -46,7 +46,7 @@ def search(q):
 	return search_internal(q)
 
 def queue_song(song):
-		redis.lpush("queue", json.dumps({"hash": song["hash"]}))
+		redis.lpush("queue", json.dumps(song))
 		L.info("Song {} requested".format(song["hash"]))
 		return dict(song)
 
@@ -102,6 +102,7 @@ def listeners():
 
 def format_playing(data):
 	return {
+		"id": data.get("id"),
 		"title": data.get("title"),
 		"artist": data.get("artist"),
 		"album": data.get("album"),
@@ -112,7 +113,7 @@ def format_playing(data):
 @json_api
 def playing():
 	data = json.loads(redis.get("np_data").decode("utf-8"))
-	return format_playing(data)
+	return data
 
 @with_pg_cursor()
 def get_favs(users, cur=None):
@@ -233,12 +234,12 @@ def playing_publisher():
 		if m["type"] != "message":
 			continue
 		L.debug("Emitting now playing info")
-		socketio.emit("playing", format_playing(json.loads(redis.get("np_data").decode("utf-8"))))
+		socketio.emit("playing", redis.get("np_data").decode("utf-8"))
 eventlet.spawn_n(playing_publisher)
 
 @socketio.on("connect")
 def ws_connect():
-	emit("playing", format_playing(json.loads(redis.get("np_data").decode("utf-8"))))
+	emit("playing", redis.get("np_data").decode("utf-8"))
 
 @app.route("/admin/update_index")
 def update_index():
