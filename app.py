@@ -1,3 +1,5 @@
+import socket
+
 from schema import ix
 from config import redis
 import config
@@ -82,6 +84,14 @@ def request_random(terms):
 		return flask.Response(status=404)
 	song = random.choice(songs)
 	return queue_song(song)
+
+@app.route("/api/skip")
+def skip():
+	sock = socket.socket()
+	sock.connect(config.liquidsoap)
+	sock.sendall(b"stream(dot)flac.skip\r\n")
+	sock.close()
+	return ""
 
 @app.route("/api/download/<hash>")
 def download(hash):
