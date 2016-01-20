@@ -59,7 +59,7 @@ def request(hash):
 		res = searcher.search(Prefix("hash", hash), limit=1)
 		if len(res) == 0:
 			return flask.Response(status=404)
-		return queue_song(res[0])
+		return queue_song(dict(res[0]))
 
 @app.route("/api/request/favorite/<user>")
 @with_pg_cursor(cursor_factory=psycopg2.extras.DictCursor)
