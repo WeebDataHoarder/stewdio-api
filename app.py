@@ -55,6 +55,9 @@ def queue_song(song):
 @app.route("/api/request/<hash>")
 @json_api
 def request(hash):
+	return request_internal(hash)
+
+def request_internal(hash):
 	with ix.searcher() as searcher:
 		res = searcher.search(Prefix("hash", hash), limit=1)
 		if len(res) == 0:
@@ -71,9 +74,7 @@ def request_favorite(cur, user, num=1):
 	random.shuffle(favs)
 	favs = favs[:num]
 	cur.execute("""SELECT hash FROM songs WHERE id IN %s;""", (tuple(favs),))
-	ret = []
-	for song in cur:
-		ret.append(queue_song(song))
+	ret = [request_internal(song["hash"]) for song in cur]
 	return ret
 
 @app.route("/api/request/random/<terms>")
