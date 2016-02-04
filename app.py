@@ -237,6 +237,15 @@ def get_queue():
 	song_infos = {s["hash"]: s for s in get_song_info(hashes=queued_songs)}
 	return [song_infos[hash] for hash in reversed(queued_songs)]
 
+@app.route("/api/info/<hash>")
+@json_api
+def info(hash):
+	with ix.searcher() as searcher:
+		res = searcher.search(Prefix("hash", hash), limit=1)
+		if len(res) == 0:
+			return flask.Response(status=404)
+		return dict(res[0])
+
 def playing_publisher():
 	L.info("Starting PubSub listener")
 	pubsub = redis.pubsub()
