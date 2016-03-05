@@ -37,7 +37,7 @@ def update(cur, limit_path=None, limit_ids=None):
 			LEFT OUTER JOIN taggings AS ts ON s.id = ts.song
 			LEFT OUTER JOIN tags AS t ON ts.tag = t.id
 			WHERE
-				s.status IN ('active', 'unlisted') {}
+				s.status IN ('active') {}
 			GROUP BY
 				s.id, s.hash, s.location, s.title, ar.name, al.name, s.length, s.status;""".format(extra_query),
 			extra_args
