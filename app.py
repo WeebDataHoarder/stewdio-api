@@ -32,20 +32,20 @@ socketio = SocketIO(app)
 def index():
 	return flask.render_template("index.html")
 
-def search_internal(q):
+def search_internal(q, limit=None):
 	parser = MultifieldParser(["title", "artist"], ix.schema)
 	parser.add_plugin(GtLtPlugin())
 	parser.add_plugin(PlusMinusPlugin())
 	myquery = parser.parse(q)
 	L.debug("Search query: {}".format(myquery))
 	with ix.searcher() as searcher:
-		res = searcher.search(myquery, limit=30)
+		res = searcher.search(myquery, limit=limit)
 		return [dict(r) for r in res]
 
 @app.route("/api/search/<q>")
 @json_api
 def search(q):
-	return search_internal(q)
+	return search_internal(q, limit=request.args.get("limit", None))
 
 def queue_song(song):
 		redis.lpush("queue", json.dumps(song))
