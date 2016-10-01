@@ -45,7 +45,7 @@ def search_internal(q, limit=None):
 @app.route("/api/search/<q>")
 @json_api
 def search(q):
-	return search_internal(q, limit=request.args.get("limit", None))
+	return search_internal(q, limit=int(flask.request.args.get("limit", 0)) or None)
 
 def queue_song(song):
 		redis.lpush("queue", json.dumps(song))
