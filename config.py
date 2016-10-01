@@ -10,7 +10,9 @@ postgres = ThreadedConnectionPool(
 	minconn=1,
 	maxconn=10,
 	user="radio",
-	database="music"
+	database="music",
+	password="radio",
+	host="127.0.0.1"
 )
 
 redis = StrictRedis(
@@ -22,7 +24,7 @@ redis = StrictRedis(
 liquidsoap = ("localhost", 1234)
 
 fmt = logging.Formatter("[%(asctime)s] %(levelname)s: %(pathname)s:%(funcName)s(%(lineno)s): %(message)s")
-logger = logging.getLogger("stewdio")
+logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 
 # stderr logging
