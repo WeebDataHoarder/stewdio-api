@@ -185,6 +185,26 @@ def unique_favorites(user, others):
 			map(set, others_songs), set(songs))
 	return get_song_info(unique_songs)
 
+@app.route("/api/favorites/<user>/<hash>", methods=["GET"])
+@json_api
+@with_pg_cursor()
+def check_favorite(user, hash, cur=None):
+	if hash == "playing":
+		data = json.loads(redis.get("np_data").decode("utf-8"))
+		hash = data["hash"]
+	else:
+		int(hash, 16)  # validate hex
+	hash += "%"
+	cur.execute("SELECT id FROM songs WHERE hash ILIKE %s", (hash,))
+	song_id = cur.fetchone()
+	cur.execute("SELECT id FROM users WHERE nick = %s", (user,))
+	user_id = cur.fetchone()
+	if not user_id:
+		return {"favorite": False}
+	cur.execute("""SELECT COUNT(*) FROM favorites WHERE
+		account = %s AND song = %s""", (user_id, song_id))
+	return {"favorite": cur.fetchone()[0] > 0}
+
 @app.route("/api/favorites/<user>/<hash>", methods=["PUT"])
 @with_pg_cursor()
 def add_favorite(user, hash, cur=None):
