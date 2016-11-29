@@ -47,6 +47,16 @@ def search_internal(q, limit=None):
 def search(q):
 	return search_internal(q, limit=int(flask.request.args.get("limit", 0)) or None)
 
+@app.route("/api/random")
+@with_pg_cursor(cursor_factory=psycopg2.extras.DictCursor)
+@json_api
+def get_random_song(cur):
+	cur.execute("""
+			SELECT songs.id AS id, location AS path FROM songs
+			WHERE status='active'
+			OFFSET random() * (SELECT COUNT(*) FROM songs) LIMIT 1""")
+	return cur.fetchone()
+
 def queue_song(song):
 		redis.lpush("queue", json.dumps(song))
 		L.info("Song {} requested".format(song["hash"]))
