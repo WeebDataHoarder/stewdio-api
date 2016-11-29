@@ -51,11 +51,14 @@ def search(q):
 @with_pg_cursor(cursor_factory=psycopg2.extras.DictCursor)
 @json_api
 def get_random_song(cur):
-	cur.execute("""
-			SELECT songs.id AS id, location AS path FROM songs
-			WHERE status='active'
-			OFFSET random() * (SELECT COUNT(*) FROM songs) LIMIT 1""")
-	return cur.fetchone()
+	res = None
+	while not res:
+		cur.execute("""
+				SELECT songs.id AS id, location AS path FROM songs
+				WHERE status='active'
+				OFFSET random() * (SELECT COUNT(*) FROM songs) LIMIT 1""")
+		res = cur.fetchone()
+	return {"id": res["id"], "path": res["path"]}
 
 def queue_song(song):
 		redis.lpush("queue", json.dumps(song))
