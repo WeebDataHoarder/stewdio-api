@@ -63,6 +63,11 @@ def get_random_song(cur):
 def queue_song(song):
 		redis.lpush("queue", json.dumps(song))
 		L.info("Song {} requested".format(song["hash"]))
+		# Try enqueueing with the new streamer, may or may not be running
+		try:
+			requests.post("http://localhost:4040/queue/head", json={"id": song["id"], "path": song["path"]})
+		except:
+			None
 		return dict(song)
 
 @app.route("/api/request/<hash>")
