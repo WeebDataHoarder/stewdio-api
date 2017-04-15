@@ -14,7 +14,7 @@ class Song(Base):
     __tablename__ = "songs"
     id = sa.Column(sa.Integer, primary_key=True)
     title = sa.Column(sa.Text)
-    location = sa.Column(Text, nullable=False)
+    location = sa.Column(sa.Text, nullable=False)
     hash = sa.Column(sa.Text, unique=True)
 
     status = sa.Column(
