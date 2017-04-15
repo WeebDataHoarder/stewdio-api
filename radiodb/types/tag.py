@@ -1,9 +1,9 @@
 import sqlalchemy as sa
 from radiodb.database import Base
 
-taggings = Table("taggings", Base.metadata,
-    Column("song", Integer, ForeignKey("songs.id")),
-    Column("tag", Integer, ForeignKey("tags.id"))
+taggings = sa.Table("taggings", Base.metadata,
+    sa.Column("song", sa.Integer, sa.ForeignKey("songs.id")),
+    sa.Column("tag", sa.Integer, sa.ForeignKey("tags.id"))
 )
 
 class Tag(Base):
