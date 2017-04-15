@@ -11,7 +11,9 @@ setup(
   name = 'radiodb',
   packages = [
       'radiodb',
-      'radiodb.types'
+      'radiodb.types',
+      'radiodb.alembic',
+      'radiodb.alembic.versions'
   ],
   version = ver,
   description = 'radio.stew.moe database bindings',
