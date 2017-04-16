@@ -15,6 +15,7 @@ class Song(Base):
     id = sa.Column(sa.Integer, primary_key=True)
     title = sa.Column(sa.Text)
     location = sa.Column(sa.Text, nullable=False)
+    length = sa.Column(sa.Integer)
     hash = sa.Column(sa.Text, unique=True)
 
     status = sa.Column(

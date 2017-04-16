@@ -14,3 +14,5 @@ class Favorite(Base):
             sa.ForeignKey("songs.id"),
             name="song")
     song = sa.orm.relationship("Song")
+
+    __table_args__ = (sa.schema.Index("uniq_favorite", "account", "song", unique=True),)
