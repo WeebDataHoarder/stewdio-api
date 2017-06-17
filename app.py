@@ -325,8 +325,8 @@ def icecast_auth():
 		return ""
 	if action == "listener_add":
 		if mount_user:
-			if int(redis.incr("named_listeners:" + mount_user)) > 1:
-				redis.publish("listener", "connect:" + mount_user)
+			redis.incr("named_listeners:" + mount_user)
+			redis.publish("listener", "connect:" + mount_user)
 			redis.sadd("named_listeners", mount_user)
 		eventlet.spawn_after(0.5, update_listener_count)
 	if action == "listener_remove":
