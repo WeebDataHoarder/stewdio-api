@@ -118,8 +118,11 @@ def download(hash):
 		res = searcher.search(Prefix("hash", hash), limit=1)
 		if len(res) == 0:
 			return flask.Response(status=404)
-		att_fn = os.path.basename(res[0]["path"]).encode('ascii', errors='replace').decode('ascii').replace('?', '_')
-		return flask.send_file(res[0]["path"], as_attachment=True, attachment_filename=att_fn)
+		path = res[0]["path"]
+		att_fn = os.path.basename(path).encode('ascii', errors='replace').decode('ascii').replace('?', '_')
+		if not os.path.exists(path):
+			return flask.Response(status=404)
+		return flask.send_file(path, as_attachment=True, attachment_filename=att_fn)
 
 @app.route("/api/listeners")
 @json_api
