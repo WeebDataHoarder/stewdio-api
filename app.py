@@ -107,6 +107,16 @@ def skip():
 	requests.post(kawa('skip'))
 	return ""
 
+@app.route("/api/queue/head", methods=['DELETE'])
+def queue_remove_head():
+	requests.delete(kawa('queue/head'))
+	return ""
+
+@app.route("/api/queue/tail", methods=['DELETE'])
+def queue_remove_tail():
+	requests.delete(kawa('queue/tail'))
+	return ""
+
 @app.route("/api/download/<hash>")
 def download(hash):
 	with ix.searcher() as searcher:
