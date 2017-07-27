@@ -14,7 +14,7 @@ import flask
 from flask.ext.socketio import SocketIO, emit
 from whoosh.qparser import MultifieldParser, GtLtPlugin, PlusMinusPlugin
 from whoosh.query import Prefix, Term
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlsplit, parse_qs
 import psycopg2.extras
 import eventlet
 import requests
@@ -27,6 +27,9 @@ L = logging.getLogger("stewdio.app")
 app = flask.Flask(__name__)
 app.register_blueprint(tagging.api)
 socketio = SocketIO(app)
+
+def kawa(api_function_name):
+	return config.kawa_api + api_function_name
 
 @app.route("/")
 def index():
@@ -61,13 +64,8 @@ def get_random_song(cur):
 	return {"id": res["id"], "path": res["path"]}
 
 def queue_song(song):
-		redis.lpush("queue", json.dumps(song))
 		L.info("Song {} requested".format(song["hash"]))
-		# Try enqueueing with the new streamer, may or may not be running
-		try:
-			requests.post("http://localhost:4040/queue/head", json={"id": song["id"], "path": song["path"]})
-		except:
-			None
+		requests.post(kawa('queue/tail'), json={"id": int(song["id"]), "path": song["path"]})
 		return dict(song)
 
 @app.route("/api/request/<hash>")
@@ -106,10 +104,7 @@ def request_random(terms):
 
 @app.route("/api/skip")
 def skip():
-	sock = socket.socket()
-	sock.connect(config.liquidsoap)
-	sock.sendall(b"stream(dot)flac.skip\r\n")
-	sock.close()
+	requests.post(kawa('skip'))
 	return ""
 
 @app.route("/api/download/<hash>")
@@ -127,10 +122,19 @@ def download(hash):
 @app.route("/api/listeners")
 @json_api
 def listeners():
+	r = requests.get(kawa('listeners'))
+	named_listeners = []
+	num_listeners = 0
+	for listener in r.json():
+		path_split = urlsplit(listener["path"])
+		q = parse_qs(path_split.query)
+		if "user" in q:
+			named_listeners.append(q["user"][0])
+		num_listeners += 1
+
 	return {
-		"num_listeners": int(redis.get("num_listeners") or 0),
-		"named_listeners": [user.decode("utf-8")
-			for user in redis.smembers("named_listeners")],
+		"num_listeners": num_listeners,
+		"named_listeners": named_listeners,
 	}
 
 def format_playing(data):
@@ -273,11 +277,12 @@ def remove_favorite(user, hash, cur=None):
 @app.route("/api/queue")
 @json_api
 def get_queue():
-	queued_songs = [json.loads(x.decode("utf-8"))["hash"] for x in redis.lrange("queue", 0, -1)]
+	req = requests.get(kawa('queue'))
+	queued_songs = [x["id"] for x in req.json()]
 	if not queued_songs:
 		return []
-	song_infos = {s["hash"]: s for s in get_song_info(hashes=queued_songs)}
-	return [song_infos[hash] for hash in reversed(queued_songs)]
+	song_infos = {s["id"]: s for s in get_song_info(queued_songs)}
+	return [song_infos[id] for id in queued_songs]
 
 @app.route("/api/info/<hash>")
 @json_api
@@ -309,40 +314,13 @@ def update_index():
 	update(limit_path=flask.request.args.get("path"), limit_ids=(id,) if id else None)
 	return ""
 
-def update_listener_count():
-	icecast_status = requests.get(config.icecast_json).json()
-	num_listeners = sum(source["listeners"] for source in icecast_status["icestats"]["source"])
-	redis.set("num_listeners", num_listeners)
-	redis.publish("listener", "count:{}".format(num_listeners))
-
-@app.route("/icecast", methods=["POST"])
-def icecast_auth():
-	action = flask.request.form["action"]
-	L.info("Icecast auth action: {}".format(action))
-	mount = urlparse(flask.request.form["mount"])
-	mount_q = parse_qs(mount.query)
-	mount_userlist = mount_q.get("user")
-	mount_user = mount_userlist[0] if mount_userlist else None
-	if not mount.path.startswith("/stream"):
-		# requesting the web interface counts as listener too
-		return ""
-	if action == "listener_add":
-		if mount_user:
-			if int(redis.incr("named_listeners:" + mount_user)) == 1:
-				redis.incr("num_listeners")
-			redis.publish("listener", "connect:" + mount_user)
-			redis.sadd("named_listeners", mount_user)
-		eventlet.spawn_after(0.5, update_listener_count)
-	if action == "listener_remove":
-		if mount_user:
-			if int(redis.decr("named_listeners:" + mount_user) or 0) <= 0:
-				redis.decr("num_listeners")
-				redis.delete("named_listeners:" + mount_user)
-				redis.srem("named_listeners", mount_user)
-				redis.publish("listener", "disconnect:" + mount_user)
-		eventlet.spawn_after(0.5, update_listener_count)
+@app.route("/admin/playing", methods=["POST"])
+def update_playing():
+	np = flask.request.get_json()
+	info = get_song_info([np['id']])[0]
+	redis.set("np_data", json.dumps(info))
+	redis.publish("playing", json.dumps(info))
 	return ""
-
 
 if __name__ == '__main__':
 	app.debug = os.environ.get("FLASK_DEBUG", "0").lower() in ("1", "true", "on")

@@ -4,7 +4,8 @@ from psycopg2.pool import ThreadedConnectionPool
 from redis import StrictRedis, BlockingConnectionPool
 
 index_dir = Path(__file__).parent / "indexdir"
-icecast_json = "http://127.0.0.1:8000/status-json.xsl"
+
+kawa_api = "http://127.0.0.1:4040/"
 
 postgres = ThreadedConnectionPool(
 	minconn=1,
@@ -20,8 +21,6 @@ redis = StrictRedis(
 		max_connections=10
 	)
 )
-
-liquidsoap = ("localhost", 1234)
 
 fmt = logging.Formatter("[%(asctime)s] %(levelname)s: %(pathname)s:%(funcName)s(%(lineno)s): %(message)s")
 logger = logging.getLogger()
