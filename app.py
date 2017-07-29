@@ -20,6 +20,7 @@ import eventlet
 import requests
 import random
 from functools import reduce
+import time
 import logging
 
 L = logging.getLogger("stewdio.app")
@@ -330,6 +331,7 @@ def update_playing():
 	info = get_song_info([np['id']])[0]
 	redis.set("np_data", json.dumps(info))
 	redis.publish("playing", json.dumps(info))
+	redis.zadd("history", time.time(), json.dumps(info))
 	return ""
 
 if __name__ == '__main__':
