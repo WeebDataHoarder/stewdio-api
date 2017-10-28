@@ -3,32 +3,31 @@ import config
 import json
 import flask
 from functools import wraps
+import psycopg2.extras
 
 
-def with_pg_cursor(*cur_args, **cur_kwargs):
+def with_pg_cursor(fn):
 	"""
 	Injects an argument `cur` containing a postgres cursor into the function arguments. Autocommits.
 	"""
-	def decorator(fn):
-		@wraps(fn)
-		def wrapper(*args, **kwargs):
-			if "cur" in kwargs:
-				# pg cursor is given by the caller already, which also takes care of committing
-				return fn(*args, **kwargs)
-			conn = config.postgres.getconn()
-			cur = conn.cursor(*cur_args, **cur_kwargs)
-			kwargs["cur"] = cur
-			try:
-				ret = fn(*args, **kwargs)
-				conn.commit()
-				return ret
-			except:
-				conn.rollback()
-				raise
-			finally:
-				config.postgres.putconn(conn)
-		return wrapper
-	return decorator
+	@wraps(fn)
+	def wrapper(*args, **kwargs):
+		if "cur" in kwargs:
+			# pg cursor is given by the caller already, which also takes care of committing
+			return fn(*args, **kwargs)
+		conn = config.postgres.getconn()
+		cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+		kwargs["cur"] = cur
+		try:
+			ret = fn(*args, **kwargs)
+			conn.commit()
+			return ret
+		except:
+			conn.rollback()
+			raise
+		finally:
+			config.postgres.putconn(conn)
+	return wrapper
 
 
 def json_api(fn):

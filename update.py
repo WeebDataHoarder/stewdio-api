@@ -1,19 +1,16 @@
 #!/usr/bin/env python3
-import config
 from misc import with_pg_cursor
 from schema import ix
 
 import sys
-import psycopg2
-import psycopg2.extras
 import logging
 
 L = logging.getLogger("stewdio.searchindex")
 
 step_size = 1000
 
-@with_pg_cursor(cursor_factory=psycopg2.extras.DictCursor)
-def update(cur, limit_path=None, limit_ids=None):
+@with_pg_cursor
+def update_search_index(cur, limit_path=None, limit_ids=None):
 	L.debug("Updating index with filters: path={} ids={}".format(limit_path, limit_ids))
 	with ix.writer() as writer:
 		extra_args = []
@@ -55,12 +52,12 @@ def update(cur, limit_path=None, limit_ids=None):
 
 if __name__ == "__main__":
 	limit_path = None
-	limit_ids = []
+	limit_ids = None
 
 	if len(sys.argv) > 1:
 		try:
-			limit_ids = (int(sys.argv[1]),)
+			limit_ids = tuple(int(x) for x in sys.argv[1:])
 		except ValueError:
 			limit_path = sys.argv[1]
 
-	update(limit_path=limit_path, limit_ids=limit_ids)
+	update_search_index(limit_path=limit_path, limit_ids=limit_ids)

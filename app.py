@@ -1,9 +1,7 @@
-import socket
-
 from schema import ix
 from config import redis
 import config
-from update import update
+from update import update_search_index
 import tagging
 from misc import json_api, with_pg_cursor
 
@@ -11,9 +9,9 @@ from misc import json_api, with_pg_cursor
 import os
 import json
 import flask
-from flask.ext.socketio import SocketIO, emit
+from flask_socketio import SocketIO, emit
 from whoosh.qparser import MultifieldParser, GtLtPlugin, PlusMinusPlugin
-from whoosh.query import Prefix, Term
+from whoosh.query import Prefix
 from urllib.parse import urlsplit, parse_qs
 import psycopg2.extras
 import eventlet
@@ -52,7 +50,7 @@ def search(q):
 	return search_internal(q, limit=int(flask.request.args.get("limit", 0)) or None)
 
 @app.route("/api/random")
-@with_pg_cursor(cursor_factory=psycopg2.extras.DictCursor)
+@with_pg_cursor
 @json_api
 def get_random_song(cur):
 	res = None
@@ -82,7 +80,7 @@ def request_internal(hash):
 		return queue_song(dict(res[0]))
 
 @app.route("/api/request/favorite/<user>")
-@with_pg_cursor(cursor_factory=psycopg2.extras.DictCursor)
+@with_pg_cursor
 @json_api
 def request_favorite(cur, user, num=1):
 	if "num" in flask.request.args:
@@ -163,7 +161,7 @@ def playing():
 	data = json.loads(redis.get("np_data").decode("utf-8"))
 	return data
 
-@with_pg_cursor()
+@with_pg_cursor
 def get_favs(users, cur=None):
 	cur.execute("""
 			SELECT u.nick, array_agg(f.song)
@@ -177,7 +175,7 @@ def get_favs(users, cur=None):
 	)
 	return {row[0]: row[1] for row in cur}
 
-@with_pg_cursor(cursor_factory=psycopg2.extras.DictCursor)
+@with_pg_cursor
 def get_song_info(ids=None, hashes=None, cur=None):
 	search_field = "id" if hashes is None else "hash"
 	search_values = ids if hashes is None else hashes
@@ -224,7 +222,7 @@ def unique_favorites(user, others):
 
 @app.route("/api/favorites/<user>/<hash>", methods=["GET"])
 @json_api
-@with_pg_cursor()
+@with_pg_cursor
 def check_favorite(user, hash, cur=None):
 	if hash == "playing":
 		data = json.loads(redis.get("np_data").decode("utf-8"))
@@ -239,11 +237,11 @@ def check_favorite(user, hash, cur=None):
 	if not user_id:
 		return {"favorite": False}
 	cur.execute("""SELECT COUNT(*) FROM favorites WHERE
-		account = %s AND song = %s""", (user_id, song_id))
+		account = %s AND song = %s""", (user_id[0], song_id[0]))
 	return {"favorite": cur.fetchone()[0] > 0}
 
 @app.route("/api/favorites/<user>/<hash>", methods=["PUT"])
-@with_pg_cursor()
+@with_pg_cursor
 def add_favorite(user, hash, cur=None):
 	if hash == "playing":
 		data = json.loads(redis.get("np_data").decode("utf-8"))
@@ -260,14 +258,15 @@ def add_favorite(user, hash, cur=None):
 		user_id = cur.fetchone()
 	try:
 		cur.execute("""INSERT INTO favorites
-			(account, song) VALUES (%s, %s)""", (user_id, song_id))
+			(account, song) VALUES (%s, %s)""", (user_id[0], song_id[0]))
+		update_search_index(cur=cur, limit_ids=(song_id[0],))
 	except psycopg2.IntegrityError as e:
 		return flask.Response(status=200)
 	else:
 		return flask.Response(status=201)
 
 @app.route("/api/favorites/<user>/<hash>", methods=["DELETE"])
-@with_pg_cursor()
+@with_pg_cursor
 def remove_favorite(user, hash, cur=None):
 	if hash == "playing":
 		data = json.loads(redis.get("np_data").decode("utf-8"))
@@ -282,7 +281,8 @@ def remove_favorite(user, hash, cur=None):
 	if not user_id:
 		return flask.Response(status=400)
 	cur.execute("""DELETE FROM favorites
-			WHERE account = %s AND song = %s;""", (user_id, song_id))
+			WHERE account = %s AND song = %s;""", (user_id[0], song_id[0]))
+	update_search_index(cur=cur, limit_ids=(song_id[0],))
 	return flask.Response(status=200)
 
 @app.route("/api/queue")
@@ -322,7 +322,7 @@ def ws_connect():
 @app.route("/admin/update_index")
 def update_index():
 	id = flask.request.args.get("id")
-	update(limit_path=flask.request.args.get("path"), limit_ids=(id,) if id else None)
+	update_search_index(limit_path=flask.request.args.get("path"), limit_ids=(id,) if id else None)
 	return ""
 
 @app.route("/admin/playing", methods=["POST"])
