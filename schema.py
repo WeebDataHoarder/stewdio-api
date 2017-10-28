@@ -14,7 +14,8 @@ class StewdioSchema(fields.SchemaClass):
 	album = fields.NGRAM(stored=True, phrase=True, minsize=1)
 	duration = fields.NUMERIC(stored=True)
 	status = fields.KEYWORD(stored=True)
-	tags = fields.KEYWORD(commas=True)
+	tag = fields.KEYWORD(commas=True)
+	fav = fields.KEYWORD(commas=True)
 
 storage = FileStorage(str(config.index_dir))
 

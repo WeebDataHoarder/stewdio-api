@@ -30,12 +30,15 @@ def update(cur, limit_path=None, limit_ids=None):
 			SELECT s.id AS id, s.hash AS hash, s.location AS path,
 				s.title AS title, ar.name AS artist, al.name AS album,
 				s.length AS duration, s.status AS status,
-				coalesce(string_agg(t.name, ','), '') AS tags
+				coalesce(string_agg(t.name, ','), '') AS tag,
+				coalesce(string_agg(u.nick, ','), '') AS fav
 			FROM songs AS s
 			LEFT OUTER JOIN artists AS ar ON s.artist = ar.id
 			LEFT OUTER JOIN albums AS al ON s.album = al.id
 			LEFT OUTER JOIN taggings AS ts ON s.id = ts.song
 			LEFT OUTER JOIN tags AS t ON ts.tag = t.id
+			LEFT OUTER JOIN favorites AS f ON s.id = f.song
+			LEFT OUTER JOIN users AS u ON f.account = u.id
 			WHERE
 				s.status IN ('active') {}
 			GROUP BY
