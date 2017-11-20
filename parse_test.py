@@ -12,11 +12,13 @@ cases = (
     ('''album:barbarossa''', Qualified('album', String('barbarossa'))),
     ('''tag:vocaloid''', Qualified('tag', String('vocaloid'))),
     ('''test''', Unqualified(String('test'))),
-#    ('''fav:SirCmpwn album:"gurren lagann"''', None),
-#    ('''album:H.O.T.D NOT fav:minus''', None),
+    ('''fav:SirCmpwn album:"gurren lagann"''', And(Qualified('fav', String('SirCmpwn')), Qualified('album', String('gurren lagann')))),
+    ('''album:H.O.T.D NOT fav:minus''', And(Qualified('album', String('H.O.T.D')), Not(Qualified('fav', String('minus'))))),
+    ('''one in a billion''', And(And(And(Unqualified(String('one')), Unqualified(String('in'))), Unqualified(String('a'))), Unqualified(String('billion')))),
+    ('''one in a billion may'n''', And(And(And(And(Unqualified(String('one')), Unqualified(String('in'))), Unqualified(String('a'))), Unqualified(String('billion'))), Unqualified(String("may'n")))),
     ('''(artist:mizuki OR artist:水樹) AND NOT fav:minus AND album:'supernal liberty' OR million''', Or(And(And(Or(Qualified('artist', String('mizuki')), Qualified('artist', String('水樹'))), Not(Qualified('fav', String('minus')))), Qualified('album', String('supernal liberty'))), Unqualified(String('million')))),
-    ('''world.execute(me)''', (ValueError, "Ran into a Token('LPAREN', '(') where it wasn't expected")),
-    ('''path:"comet lucifer" -inst''', (ValueError, "Ran into a Token('WORD', '-inst') where it wasn't expected")),
+    ('''world.execute(me)''', (ValueError, "Ran into a Token('RPAREN', ')') where it wasn't expected")),
+#    ('''path:"comet lucifer" -inst''', (ValueError, "Ran into a Token('WORD', '-inst') where it wasn't expected")),
 )
 
 @pytest.mark.parametrize('input,expected', cases)

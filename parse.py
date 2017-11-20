@@ -13,7 +13,7 @@ elemental_query = ( qualified | unqualified ) ;
 qualified = WORD , COLON , string ;
 unqualified = string ;
 
-combination = query , ( AND | OR ) , query ;
+combination = query , [ ( AND | OR ) ] , query ;
 
 inverted_query = NOT , query ;
 
@@ -30,7 +30,7 @@ lg = LexerGenerator()
 lg.add('AND', r'AND')
 lg.add('OR', r'OR')
 lg.add('NOT', r'NOT')
-lg.add('WORD', r'[^:"\'()\s]+')
+lg.add('WORD', r'[^:"\'()\s-][^:)\s]*')
 lg.add('STRING', r'"[^"]*"|\'[^\']*\'')
 #lg.add('MINUS', r'-')
 lg.add('LPAREN', r'\(')
@@ -193,6 +193,11 @@ def combination_and(p):
 @pg.production('combination : query OR query')
 def combination_or(p):
     return Or(p[0], p[2])
+
+
+@pg.production('combination : query query', precedence='AND')
+def combination_implicit_and(p):
+    return And(p[0], p[1])
 
 
 @pg.production('subquery : LPAREN query RPAREN')
