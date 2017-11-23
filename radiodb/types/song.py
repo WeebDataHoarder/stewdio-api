@@ -17,6 +17,7 @@ class Song(Base):
     location = sa.Column(sa.Text, nullable=False)
     length = sa.Column(sa.Integer)
     hash = sa.Column(sa.Text, unique=True)
+    added = sa.Column(sa.DateTime, server_default=sa.func.now())
 
     status = sa.Column(
             sau.ChoiceType(SongStatus, impl=sa.String()),
