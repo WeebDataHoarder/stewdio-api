@@ -2,6 +2,7 @@
 
 from rply import ParserGenerator, LexerGenerator
 from rply.token import BaseBox
+from enum import Enum
 import functools
 
 """
@@ -22,7 +23,24 @@ subquery = LPAREN , query , RPAREN ;
 string = ( WORD | STRING ) ;
 """
 
-QUALIFIERS = ('title', 'artist', 'album', 'fav', 'tag')
+class Ops(Enum):
+    ILIKE = lambda k, v: f"{k} ILIKE '%' || {v} || '%'"
+    IN = lambda k, v: f"ARRAY[{v}] <@ {k}"
+    EQUALS = lambda k, v: f"{k} = {v}"
+
+class OpsConfig:
+    def __init__(self, field, supported_ops):
+        self.field = field
+        self.supported_ops = supported_ops
+
+
+QUALIFIERS = {
+    'title': OpsConfig('songs.title', (Ops.ILIKE, Ops.EQUALS)),
+    'artist': OpsConfig('artists.name', (Ops.ILIKE, Ops.EQUALS)),
+    'album': OpsConfig('albums.name', (Ops.ILIKE, Ops.EQUALS)),
+    'fav': OpsConfig('array_agg(users.nick)', (Ops.IN,)),
+    'tag': OpsConfig('array_agg(tags.name)', (Ops.IN,)),
+}
 # when no qualifier is given, look at all those
 UNQUALIFIERS = ('title', 'artist', 'tag')
 
@@ -118,7 +136,9 @@ class Qualified:
         self.search_term = search_term
 
     def build(self):
-        return f'{self.qualifier} = {self.search_term.build()}'
+        oc = QUALIFIERS[self.qualifier]
+        op = oc.supported_ops[0]
+        return op(oc.field, self.search_term.build())
 
     def __repr__(self):
         return f'{self.__class__.__name__}({self.qualifier!r}, {self.search_term!r})'
@@ -134,7 +154,11 @@ class Unqualified:
         self.search_term = search_term
 
     def build(self):
-        return '(' + ' OR '.join(f"{q} = {self.search_term.build()}" for q in UNQUALIFIERS) + ')'
+        def build_one(qualifier):
+            oc = QUALIFIERS[qualifier]
+            op = oc.supported_ops[0]
+            return op(oc.field, self.search_term.build())
+        return '(' + ' OR '.join(build_one for q in UNQUALIFIERS) + ')'
 
     def __repr__(self):
         return f'{self.__class__.__name__}({self.search_term!r})'
