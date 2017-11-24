@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 
 from rply import ParserGenerator, LexerGenerator
-from rply.token import BaseBox
-import functools
-from ast import *
+from .ast import *
 
 """
 EBNF:

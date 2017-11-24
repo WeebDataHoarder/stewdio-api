@@ -3,7 +3,6 @@ import psycopg2.extras
 import logging
 
 from misc import with_pg_cursor, json_api, song_hash2id
-from update import update_search_index
 
 from flask import Blueprint
 
@@ -27,7 +26,6 @@ def add(cur, song_id, tag):
 		cur.execute("INSERT INTO taggings (song, tag) VALUES (%s, %s)", (song_id, res[0]))
 	except psycopg2.IntegrityError:
 		return {"created": False}, 200
-	update_search_index(cur=cur, limit_ids=(song_id,))
 	return {"created": True}, 201
 
 @api.route("/<song_id>/remove/<tag>", methods=["POST"])
@@ -42,5 +40,4 @@ def remove(cur, song_id, tag):
 	cur.execute("DELETE FROM taggings WHERE song = %s AND tag = %s", (song_id, res[0]))
 	if cur.rowcount == 0:
 		return {"removed": False}, 200
-	update_search_index(cur=cur, limit_ids=(song_id,))
 	return {"removed": True}, 201

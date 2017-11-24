@@ -1,23 +1,19 @@
-from schema import ix
 from config import redis
 import config
-from update import update_search_index
 import tagging
 from misc import json_api, with_pg_cursor
+from search import search as search_internal, search_by_hash, search_favorites
 
 
 import os
 import json
 import flask
 from flask_socketio import SocketIO, emit
-from whoosh.qparser import MultifieldParser, GtLtPlugin, PlusMinusPlugin
-from whoosh.query import Prefix
 from urllib.parse import urlsplit, parse_qs
 import psycopg2.extras
 import eventlet
 import requests
 import random
-from functools import reduce
 import time
 import logging
 
@@ -34,20 +30,11 @@ def kawa(api_function_name):
 def index():
 	return flask.render_template("index.html")
 
-def search_internal(q, limit=None):
-	parser = MultifieldParser(["title", "artist"], ix.schema)
-	parser.add_plugin(GtLtPlugin())
-	parser.add_plugin(PlusMinusPlugin())
-	myquery = parser.parse(q)
-	L.debug("Search query: {}".format(myquery))
-	with ix.searcher() as searcher:
-		res = searcher.search(myquery, limit=limit)
-		return [dict(r) for r in res]
-
 @app.route("/api/search/<q>")
+@with_pg_cursor
 @json_api
-def search(q):
-	return search_internal(q, limit=int(flask.request.args.get("limit", 0)) or None)
+def search(q, cur):
+	return search_internal(cur, q, limit=int(flask.request.args.get("limit", 0)) or None)
 
 @app.route("/api/random")
 @with_pg_cursor
@@ -68,16 +55,11 @@ def queue_song(song):
 		return dict(song)
 
 @app.route("/api/request/<hash>")
+@with_pg_cursor
 @json_api
-def request(hash):
-	return request_internal(hash)
-
-def request_internal(hash):
-	with ix.searcher() as searcher:
-		res = searcher.search(Prefix("hash", hash), limit=1)
-		if len(res) == 0:
-			return flask.Response(status=404)
-		return queue_song(dict(res[0]))
+def request(hash, cur):
+	song = search_by_hash(cur, hash)
+	return queue_song(song)
 
 @app.route("/api/request/favorite/<user>")
 @with_pg_cursor
@@ -85,17 +67,17 @@ def request_internal(hash):
 def request_favorite(cur, user, num=1):
 	if "num" in flask.request.args:
 		num = int(flask.request.args["num"])
-	favs = get_favs((user,))[user]
+	favs = search_favorites(cur, user)
 	random.shuffle(favs)
 	favs = favs[:num]
-	cur.execute("""SELECT hash FROM songs WHERE id IN %s;""", (tuple(favs),))
-	ret = [request_internal(song["hash"]) for song in cur]
+	ret = [queue_song(song) for song in favs]
 	return ret
 
 @app.route("/api/request/random/<terms>")
+@with_pg_cursor
 @json_api
-def request_random(terms):
-	songs = search_internal(terms)
+def request_random(terms, cur):
+	songs = search_internal(cur, terms)
 	if not songs:
 		return flask.Response(status=404)
 	song = random.choice(songs)
@@ -117,16 +99,16 @@ def queue_remove_tail():
 	return ""
 
 @app.route("/api/download/<hash>")
-def download(hash):
-	with ix.searcher() as searcher:
-		res = searcher.search(Prefix("hash", hash), limit=1)
-		if len(res) == 0:
-			return flask.Response(status=404)
-		path = res[0]["path"]
-		att_fn = os.path.basename(path).encode('ascii', errors='replace').decode('ascii').replace('?', '_')
-		if not os.path.exists(path):
-			return flask.Response(status=404)
-		return flask.send_file(path, as_attachment=True, attachment_filename=att_fn)
+@with_pg_cursor
+def download(hash, cur):
+	song = search_by_hash(cur, hash)
+	if not song:
+		return flask.Response(status=404)
+	path = song["path"]
+	att_fn = os.path.basename(path).encode('ascii', errors='replace').decode('ascii').replace('?', '_')
+	if not os.path.exists(path):
+		return flask.Response(status=404)
+	return flask.send_file(path, as_attachment=True, attachment_filename=att_fn)
 
 @app.route("/api/listeners")
 @json_api
@@ -162,20 +144,6 @@ def playing():
 	return data
 
 @with_pg_cursor
-def get_favs(users, cur=None):
-	cur.execute("""
-			SELECT u.nick, array_agg(f.song)
-			FROM favorites AS f
-			JOIN users AS u ON u.id = f.account
-			WHERE
-				u.nick IN %s
-			GROUP BY
-				u.id;""",
-		(tuple(users),)
-	)
-	return {row[0]: row[1] for row in cur}
-
-@with_pg_cursor
 def get_song_info(ids=None, hashes=None, cur=None):
 	search_field = "id" if hashes is None else "hash"
 	search_values = ids if hashes is None else hashes
@@ -199,26 +167,10 @@ def get_song_info(ids=None, hashes=None, cur=None):
 	return [dict(row) for row in cur]
 
 @app.route("/api/favorites/<user>")
+@with_pg_cursor
 @json_api
-def favorites(user):
-	return [dict(songinfo) for songinfo in get_song_info(get_favs((user,))[user])]
-
-@app.route("/api/common_favorites/<users>")
-@json_api
-def common_favorites(users):
-	songs = iter(get_favs(users.split(",")).values())
-	unique_songs = reduce(lambda a, b: a.intersection(b),
-			map(set, songs), set(next(songs, ())))
-	return get_song_info(unique_songs)
-
-@app.route("/api/unique_favorites/<user>/<others>")
-@json_api
-def unique_favorites(user, others):
-	songs = get_favs((user,))[user]
-	others_songs = iter(get_favs(others.split(",")).values())
-	unique_songs = reduce(lambda a, b: a.difference(b),
-			map(set, others_songs), set(songs))
-	return get_song_info(unique_songs)
+def favorites(user, cur):
+	return search_favorites(cur, user)
 
 @app.route("/api/favorites/<user>/<hash>", methods=["GET"])
 @json_api
@@ -259,7 +211,6 @@ def add_favorite(user, hash, cur=None):
 	try:
 		cur.execute("""INSERT INTO favorites
 			(account, song) VALUES (%s, %s)""", (user_id[0], song_id[0]))
-		update_search_index(cur=cur, limit_ids=(song_id[0],))
 	except psycopg2.IntegrityError as e:
 		return flask.Response(status=200)
 	else:
@@ -282,7 +233,6 @@ def remove_favorite(user, hash, cur=None):
 		return flask.Response(status=400)
 	cur.execute("""DELETE FROM favorites
 			WHERE account = %s AND song = %s;""", (user_id[0], song_id[0]))
-	update_search_index(cur=cur, limit_ids=(song_id[0],))
 	return flask.Response(status=200)
 
 @app.route("/api/queue")
@@ -296,13 +246,13 @@ def get_queue():
 	return [song_infos[id] for id in queued_songs]
 
 @app.route("/api/info/<hash>")
+@with_pg_cursor
 @json_api
-def info(hash):
-	with ix.searcher() as searcher:
-		res = searcher.search(Prefix("hash", hash), limit=1)
-		if len(res) == 0:
-			return flask.Response(status=404)
-		return dict(res[0])
+def info(hash, cur):
+	song = search_by_hash(cur, hash)
+	if not song:
+		return flask.Response(status=404)
+	return song
 
 def playing_publisher():
 	L.info("Starting PubSub listener")
@@ -318,12 +268,6 @@ eventlet.spawn_n(playing_publisher)
 @socketio.on("connect")
 def ws_connect():
 	emit("playing", redis.get("np_data").decode("utf-8"))
-
-@app.route("/admin/update_index")
-def update_index():
-	id = flask.request.args.get("id")
-	update_search_index(limit_path=flask.request.args.get("path"), limit_ids=(id,) if id else None)
-	return ""
 
 @app.route("/admin/playing", methods=["POST"])
 def update_playing():

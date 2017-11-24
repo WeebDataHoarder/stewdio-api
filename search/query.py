@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
 
-import sys
-import psycopg2
-from psycopg2.extras import DictCursor
-from parse import parse
+from .parse import parse
 
 
 BASE_QUERY = '''
@@ -15,6 +12,7 @@ SELECT
     albums.name AS album,
     songs.location AS path,
     songs.length AS duration,
+    songs.status AS status,
     array_remove(array_agg(DISTINCT tags.name), NULL) AS tags,
     array_remove(array_agg(DISTINCT users.nick), NULL) AS favored_by
 FROM songs
@@ -24,27 +22,65 @@ LEFT JOIN favorites ON songs.id = favorites.song
 LEFT JOIN users ON favorites.account = users.id
 LEFT JOIN taggings ON songs.id = taggings.song
 LEFT JOIN tags ON taggings.tag = tags.id
-GROUP BY songs.id, songs.title, artists.name, albums.name
-HAVING {where}
+{where}
+GROUP BY
+    songs.id,
+    songs.hash,
+    songs.title,
+    artists.name,
+    albums.name,
+    songs.location,
+    songs.length,
+    songs.status
+HAVING {having}
 '''
 
-conn = psycopg2.connect(dbname='music')
-c = conn.cursor(cursor_factory=DictCursor)
+
+def search(cursor, query, limit=None):
+    where = "WHERE songs.status = 'active'"
+    having = parse(query).build()
+    q = BASE_QUERY.format(where=where, having=having)
+    if limit:
+        q += f' LIMIT {limit}'
+    cursor.execute(q)
+    return [dict(r) for r in cursor]
 
 
-q = """
-(artist:mizuki OR artist:水樹) AND NOT fav:minus AND album:'supernal liberty'
-"""
-if len(sys.argv) > 1:
-    q = ' '.join(sys.argv[1:])
-print("original query from user input:")
-print(q)
+def search_by_hash(cursor, hash):
+    q = BASE_QUERY.format(where='', having="songs.hash ILIKE %s || '%%'")
+    cursor.execute(q, (hash,))
+    if cursor.rowcount > 1:
+        raise ValueError(f"Expected one result, got {cursor.rowcount}")
+    elif cursor.rowcount == 0:
+        return None
+    return dict(cursor.fetchone())
 
-where = parse(q).build()
-q = BASE_QUERY.format(where=where)
-print("generated SQL query:")
-print(c.mogrify(q).decode())
-c.execute(q)
+def search_favorites(cursor, user):
+    q = BASE_QUERY.format(where='', having="ARRAY[%s] <@ array_agg(users.nick)")
+    cursor.execute(q, (user,))
+    return [dict(r) for r in cursor]
 
-for row in map(dict, c):
-    print(row)
+
+if __name__ == '__main__':
+    import sys
+    import psycopg2
+    from psycopg2.extras import DictCursor
+    conn = psycopg2.connect(dbname='music')
+    cursor = conn.cursor(cursor_factory=DictCursor)
+
+    q = """
+    (artist:mizuki OR artist:水樹) AND NOT fav:minus AND album:'supernal liberty'
+    """
+    if len(sys.argv) > 1:
+        q = ' '.join(sys.argv[1:])
+    print("original query from user input:")
+    print(q)
+
+    where = parse(q).build()
+    q = BASE_QUERY.format(where=where)
+    print("generated SQL query:")
+    print(cursor.mogrify(q).decode())
+    cursor.execute(q)
+
+    for row in map(dict, cursor):
+        print(row)
