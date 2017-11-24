@@ -17,6 +17,7 @@ QUALIFIERS = {
     'title': OpsConfig('songs.title', (Ops.ILIKE, Ops.EQUALS)),
     'artist': OpsConfig('artists.name', (Ops.ILIKE, Ops.EQUALS)),
     'album': OpsConfig('albums.name', (Ops.ILIKE, Ops.EQUALS)),
+    'path': OpsConfig('songs.location', (Ops.ILIKE, Ops.EQUALS)),
     'fav': OpsConfig('array_agg(users.nick)', (Ops.IN,)),
     'tag': OpsConfig('array_agg(tags.name)', (Ops.IN,)),
 }
