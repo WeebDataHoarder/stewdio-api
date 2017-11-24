@@ -158,7 +158,7 @@ class Unqualified:
             oc = QUALIFIERS[qualifier]
             op = oc.supported_ops[0]
             return op(oc.field, self.search_term.build())
-        return '(' + ' OR '.join(build_one for q in UNQUALIFIERS) + ')'
+        return '(' + ' OR '.join(build_one(q) for q in UNQUALIFIERS) + ')'
 
     def __repr__(self):
         return f'{self.__class__.__name__}({self.search_term!r})'
