@@ -11,7 +11,7 @@ EBNF:
 query = ( combination | inverted_query | subquery | elemental_query ) ;
 
 elemental_query = ( qualified | unqualified ) ;
-qualified = WORD , COLON , string ;
+qualified = WORD , ( COLON | EQUALS ) , string ;
 unqualified = string ;
 
 combination = query , [ ( AND | OR ) ] , query ;
@@ -26,7 +26,7 @@ string = ( WORD | STRING ) ;
 class Ops(Enum):
     ILIKE = lambda k, v: f"{k} ILIKE '%' || {v} || '%'"
     IN = lambda k, v: f"ARRAY[{v}] <@ {k}"
-    EQUALS = lambda k, v: f"{k} = {v}"
+    EQUALS = lambda k, v: f"{k} ILIKE {v}"
 
 class OpsConfig:
     def __init__(self, field, supported_ops):
@@ -48,12 +48,13 @@ lg = LexerGenerator()
 lg.add('AND', r'AND')
 lg.add('OR', r'OR')
 lg.add('NOT', r'NOT')
-lg.add('WORD', r'[^:"\'()\s-][^:)\s]*')
+lg.add('WORD', r'[^:"\'()\s=-][^:)\s=]*')
 lg.add('STRING', r'"[^"]*"|\'[^\']*\'')
 #lg.add('MINUS', r'-')
 lg.add('LPAREN', r'\(')
 lg.add('RPAREN', r'\)')
 lg.add('COLON', r':')
+lg.add('EQUALS', r'=')
 
 lg.ignore(r'\s+')
 
@@ -131,13 +132,14 @@ class Or:
 
 
 class Qualified:
-    def __init__(self, qualifier, search_term):
+    def __init__(self, qualifier, search_term, op=None):
         self.qualifier = qualifier
         self.search_term = search_term
+        self.op = op
 
     def build(self):
         oc = QUALIFIERS[self.qualifier]
-        op = oc.supported_ops[0]
+        op = self.op or oc.supported_ops[0]
         return op(oc.field, self.search_term.build())
 
     def __repr__(self):
@@ -195,8 +197,13 @@ def alias(p):
 
 
 @pg.production('qualified : WORD COLON string')
+@pg.production('qualified : WORD EQUALS string')
 def qualified(p):
-    return Qualified(p[0].value, p[2])
+    assert p[0].value in QUALIFIERS
+    if p[1].name == 'EQUALS':
+        op = Ops.EQUALS
+        assert op in QUALIFIERS[p[0].value].supported_ops
+    return Qualified(p[0].value, p[2], op)
 
 
 @pg.production('unqualified : string')

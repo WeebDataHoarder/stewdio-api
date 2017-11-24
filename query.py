@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import sys
 import psycopg2
 from parse import parse
 
@@ -10,6 +11,8 @@ c = conn.cursor()
 q = """
 (artist:mizuki OR artist:水樹) AND NOT fav:minus AND album:'supernal liberty'
 """
+if len(sys.argv) > 1:
+    q = ' '.join(sys.argv[1:])
 print("original query from user input:")
 print(q)
 
