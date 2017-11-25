@@ -207,7 +207,7 @@ def remove_favorite(user, hash, cur=None):
 @app.route("/api/queue")
 @json_api
 def get_queue():
-	return requests.get(kawa('queue'))
+	return requests.get(kawa('queue')).json()
 
 @app.route("/api/info/<hash>")
 @with_pg_cursor
