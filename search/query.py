@@ -32,14 +32,14 @@ GROUP BY
     songs.location,
     songs.length,
     songs.status
-HAVING {having}
 '''
 
 
 def search(cursor, query, limit=None):
     where = "WHERE songs.status = 'active'"
     having = parse(query).build()
-    q = BASE_QUERY.format(where=where, having=having)
+    q = BASE_QUERY.format(where=where)
+    q += f' HAVING {having}'
     if limit:
         q += f' LIMIT {limit}'
     cursor.execute(q)
@@ -47,7 +47,8 @@ def search(cursor, query, limit=None):
 
 
 def search_by_hash(cursor, hash):
-    q = BASE_QUERY.format(where='', having="songs.hash ILIKE %s || '%%'")
+    q = BASE_QUERY.format(where='')
+    q += " HAVING songs.hash ILIKE %s || '%%'"
     cursor.execute(q, (hash,))
     if cursor.rowcount > 1:
         raise ValueError(f"Expected one result, got {cursor.rowcount}")
@@ -56,9 +57,18 @@ def search_by_hash(cursor, hash):
     return dict(cursor.fetchone())
 
 def search_favorites(cursor, user):
-    q = BASE_QUERY.format(where='', having="ARRAY[%s] <@ array_agg(users.nick)")
+    q = BASE_QUERY.format(where='')
+    q += " HAVING ARRAY[%s] <@ array_agg(users.nick)"
     cursor.execute(q, (user,))
     return [dict(r) for r in cursor]
+
+def get_random(cursor):
+    where = "WHERE songs.status = 'active'"
+    q = BASE_QUERY.format(where=where)
+    q += ' ORDER BY random()'
+    q += ' LIMIT 1'
+    cursor.execute(q)
+    return dict(cursor.fetchone())
 
 
 if __name__ == '__main__':

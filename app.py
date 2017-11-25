@@ -2,8 +2,7 @@ from config import redis
 import config
 import tagging
 from misc import json_api, with_pg_cursor
-from search import search as search_internal, search_by_hash, search_favorites
-
+from search import search as search_internal, search_by_hash, search_favorites, get_random
 
 import os
 import json
@@ -40,19 +39,12 @@ def search(q, cur):
 @with_pg_cursor
 @json_api
 def get_random_song(cur):
-	res = None
-	while not res:
-		cur.execute("""
-				SELECT songs.id AS id, location AS path FROM songs
-				WHERE status='active'
-				OFFSET random() * (SELECT COUNT(*) FROM songs) LIMIT 1""")
-		res = cur.fetchone()
-	return {"id": res["id"], "path": res["path"]}
+	return get_random(cur)
 
 def queue_song(song):
 		L.info("Song {} requested".format(song["hash"]))
-		requests.post(kawa('queue/tail'), json={"id": int(song["id"]), "path": song["path"]})
-		return dict(song)
+		requests.post(kawa('queue/tail'), json=song)
+		return song
 
 @app.route("/api/request/<hash>")
 @with_pg_cursor
@@ -143,29 +135,6 @@ def playing():
 	data = json.loads(redis.get("np_data").decode("utf-8"))
 	return data
 
-@with_pg_cursor
-def get_song_info(ids=None, hashes=None, cur=None):
-	search_field = "id" if hashes is None else "hash"
-	search_values = ids if hashes is None else hashes
-	cur.execute("""
-			SELECT s.id AS id, s.hash AS hash, s.location AS path,
-				s.title AS title, ar.name AS artist, al.name AS album,
-				s.length AS duration, s.status AS status,
-				array_remove(array_agg(t.name), NULL) AS tags
-			FROM  songs AS s
-			LEFT JOIN artists AS ar ON s.artist = ar.id
-			LEFT JOIN albums AS al ON s.album = al.id
-			LEFT JOIN taggings AS ts ON s.id = ts.song
-			LEFT JOIN tags AS t ON ts.tag = t.id
-			WHERE
-				s.{} IN %s
-			GROUP BY
-				s.id, s.hash, s.location, s.title,
-				ar.name, al.name, s.length, s.status;""".format(search_field),
-		(tuple(search_values),)
-	)
-	return [dict(row) for row in cur]
-
 @app.route("/api/favorites/<user>")
 @with_pg_cursor
 @json_api
@@ -238,12 +207,7 @@ def remove_favorite(user, hash, cur=None):
 @app.route("/api/queue")
 @json_api
 def get_queue():
-	req = requests.get(kawa('queue'))
-	queued_songs = [x["id"] for x in req.json()]
-	if not queued_songs:
-		return []
-	song_infos = {s["id"]: s for s in get_song_info(queued_songs)}
-	return [song_infos[id] for id in queued_songs]
+	return requests.get(kawa('queue'))
 
 @app.route("/api/info/<hash>")
 @with_pg_cursor
@@ -272,10 +236,9 @@ def ws_connect():
 @app.route("/admin/playing", methods=["POST"])
 def update_playing():
 	np = flask.request.get_json()
-	info = get_song_info([np['id']])[0]
-	redis.set("np_data", json.dumps(info))
-	redis.publish("playing", json.dumps(info))
-	redis.zadd("history", time.time(), json.dumps(info))
+	redis.set("np_data", json.dumps(np))
+	redis.publish("playing", json.dumps(np))
+	redis.zadd("history", time.time(), json.dumps(np))
 	return ""
 
 if __name__ == '__main__':
