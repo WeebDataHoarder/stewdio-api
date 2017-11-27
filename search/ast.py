@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
+from psycopg2.sql import Literal, SQL
 
 class Ops:
-    ILIKE = lambda k, v: f"{k} ILIKE '%' || {v} || '%'"
-    IN = lambda k, v: f"ARRAY[{v}] <@ {k}"
-    EQUALS = lambda k, v: f"{k} ILIKE {v}"
+    ILIKE = lambda k, v: k + SQL(" ILIKE '%' || ") + v + SQL(" || '%'")
+    IN = lambda k, v: SQL("ARRAY[") + v + SQL("] <@ ") + k
+    EQUALS = lambda k, v: k + SQL(" ILIKE ") + v
 
 
 class OpsConfig:
@@ -14,13 +15,13 @@ class OpsConfig:
 
 
 QUALIFIERS = {
-    'title': OpsConfig('songs.title', (Ops.ILIKE, Ops.EQUALS)),
-    'artist': OpsConfig('artists.name', (Ops.ILIKE, Ops.EQUALS)),
-    'album': OpsConfig('albums.name', (Ops.ILIKE, Ops.EQUALS)),
-    'hash': OpsConfig('songs.hash', (Ops.ILIKE, Ops.EQUALS)),
-    'path': OpsConfig('songs.location', (Ops.ILIKE, Ops.EQUALS)),
-    'fav': OpsConfig('array_agg(users.nick)', (Ops.IN,)),
-    'tag': OpsConfig('array_agg(tags.name)', (Ops.IN,)),
+    'title': OpsConfig(SQL('songs.title'), (Ops.ILIKE, Ops.EQUALS)),
+    'artist': OpsConfig(SQL('artists.name'), (Ops.ILIKE, Ops.EQUALS)),
+    'album': OpsConfig(SQL('albums.name'), (Ops.ILIKE, Ops.EQUALS)),
+    'hash': OpsConfig(SQL('songs.hash'), (Ops.ILIKE, Ops.EQUALS)),
+    'path': OpsConfig(SQL('songs.location'), (Ops.ILIKE, Ops.EQUALS)),
+    'fav': OpsConfig(SQL('array_agg(users.nick)'), (Ops.IN,)),
+    'tag': OpsConfig(SQL('array_agg(tags.name)'), (Ops.IN,)),
 }
 
 # when no qualifier is given, look at all those
@@ -32,7 +33,7 @@ class String:
         self.value = value
 
     def build(self):
-        return repr(self.value)
+        return Literal(self.value)
 
     def __repr__(self):
         return f'{self.__class__.__name__}({self.value!r})'
@@ -47,7 +48,7 @@ class Not:
         self.query = query
 
     def build(self):
-        return f'NOT {self.query.build()}'
+        return SQL('NOT ') + self.query.build()
 
     def __repr__(self):
         return f'{self.__class__.__name__}({self.query!r})'
@@ -63,7 +64,7 @@ class And:
         self.right = right
 
     def build(self):
-        return f'({self.left.build()} AND {self.right.build()})'
+        return self.left.build() + SQL(' AND ') + self.right.build()
 
     def __repr__(self):
         return f'{self.__class__.__name__}({self.left!r}, {self.right!r})'
@@ -80,7 +81,7 @@ class Or:
         self.right = right
 
     def build(self):
-        return f'({self.left.build()} OR {self.right.build()})'
+        return self.left.build() + SQL(' OR ') + self.right.build()
 
     def __repr__(self):
         return f'{self.__class__.__name__}({self.left!r}, {self.right!r})'
@@ -93,6 +94,7 @@ class Or:
 
 class Qualified:
     def __init__(self, qualifier, search_term, op=None):
+        assert qualifier in QUALIFIERS
         self.qualifier = qualifier
         self.search_term = search_term
         self.op = op
@@ -120,7 +122,7 @@ class Unqualified:
             oc = QUALIFIERS[qualifier]
             op = oc.supported_ops[0]
             return op(oc.field, self.search_term.build())
-        return '(' + ' OR '.join(build_one(q) for q in UNQUALIFIERS) + ')'
+        return SQL('(') + SQL(' OR ').join(build_one(q) for q in UNQUALIFIERS) + SQL(')')
 
     def __repr__(self):
         return f'{self.__class__.__name__}({self.search_term!r})'

@@ -135,4 +135,6 @@ if __name__ == '__main__':
     print(q)
     ast = parser.parse(iter(tokens))
     print(ast)
-    print(ast.build())
+    import psycopg2
+    conn = psycopg2.connect('')
+    print(ast.build().as_string(conn))
