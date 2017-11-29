@@ -86,8 +86,11 @@ if __name__ == '__main__':
     print("original query from user input:")
     print(q)
 
-    where = parse(q).build()
-    q = BASE_QUERY.format(where=where)
+    having = parse(q).build()
+    q = BASE_QUERY.format(where=SQL(''))
+    q += SQL(' HAVING ') + having
+    print("generated SQL condition:")
+    print(having)
     print("generated SQL query:")
     print(cursor.mogrify(q).decode())
     cursor.execute(q)

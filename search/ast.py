@@ -64,7 +64,7 @@ class And:
         self.right = right
 
     def build(self):
-        return self.left.build() + SQL(' AND ') + self.right.build()
+        return SQL('(') + self.left.build() + SQL(' AND ') + self.right.build() + SQL(')')
 
     def __repr__(self):
         return f'{self.__class__.__name__}({self.left!r}, {self.right!r})'
@@ -81,7 +81,7 @@ class Or:
         self.right = right
 
     def build(self):
-        return self.left.build() + SQL(' OR ') + self.right.build()
+        return SQL('(') + self.left.build() + SQL(' OR ') + self.right.build() + SQL(')')
 
     def __repr__(self):
         return f'{self.__class__.__name__}({self.left!r}, {self.right!r})'
