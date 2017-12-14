@@ -4,6 +4,9 @@ import json
 import flask
 from functools import wraps
 import psycopg2.extras
+import psycopg2.extensions
+
+psycopg2.extensions.register_adapter(dict, psycopg2.extras.Json)
 
 
 def with_pg_cursor(fn):

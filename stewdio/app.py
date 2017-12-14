@@ -1,4 +1,3 @@
-from .config import redis
 from . import config
 from . import tagging
 from .misc import json_api, with_pg_cursor
@@ -132,8 +131,7 @@ def format_playing(data):
 @app.route("/api/playing")
 @json_api
 def playing():
-	data = json.loads(redis.get("np_data").decode("utf-8"))
-	return data
+	return np
 
 @app.route("/api/favorites/<user>")
 @with_pg_cursor
@@ -146,32 +144,30 @@ def favorites(user, cur):
 @with_pg_cursor
 def check_favorite(user, hash, cur=None):
 	if hash == "playing":
-		data = json.loads(redis.get("np_data").decode("utf-8"))
-		hash = data["hash"]
+		song_id = np["id"]
 	else:
 		int(hash, 16)  # validate hex
-	hash += "%"
-	cur.execute("SELECT id FROM songs WHERE hash ILIKE %s", (hash,))
-	song_id = cur.fetchone()
+		hash += "%"
+		cur.execute("SELECT id FROM songs WHERE hash ILIKE %s", (hash,))
+		song_id = cur.fetchone()[0]
 	cur.execute("SELECT id FROM users WHERE nick = %s", (user,))
 	user_id = cur.fetchone()
 	if not user_id:
 		return {"favorite": False}
 	cur.execute("""SELECT COUNT(*) FROM favorites WHERE
-		account = %s AND song = %s""", (user_id[0], song_id[0]))
+		account = %s AND song = %s""", (user_id[0], song_id))
 	return {"favorite": cur.fetchone()[0] > 0}
 
 @app.route("/api/favorites/<user>/<hash>", methods=["PUT"])
 @with_pg_cursor
 def add_favorite(user, hash, cur=None):
 	if hash == "playing":
-		data = json.loads(redis.get("np_data").decode("utf-8"))
-		hash = data["hash"]
+		song_id = np["id"]
 	else:
 		int(hash, 16)  # validate hex
-	hash += "%"
-	cur.execute("SELECT id FROM songs WHERE hash ILIKE %s", (hash,))
-	song_id = cur.fetchone()
+		hash += "%"
+		cur.execute("SELECT id FROM songs WHERE hash ILIKE %s", (hash,))
+		song_id = cur.fetchone()[0]
 	cur.execute("SELECT id FROM users WHERE nick = %s", (user,))
 	user_id = cur.fetchone()
 	if not user_id:
@@ -179,7 +175,7 @@ def add_favorite(user, hash, cur=None):
 		user_id = cur.fetchone()
 	try:
 		cur.execute("""INSERT INTO favorites
-			(account, song) VALUES (%s, %s)""", (user_id[0], song_id[0]))
+			(account, song) VALUES (%s, %s)""", (user_id[0], song_id))
 	except psycopg2.IntegrityError as e:
 		return flask.Response(status=200)
 	else:
@@ -189,19 +185,18 @@ def add_favorite(user, hash, cur=None):
 @with_pg_cursor
 def remove_favorite(user, hash, cur=None):
 	if hash == "playing":
-		data = json.loads(redis.get("np_data").decode("utf-8"))
-		hash = data["hash"]
+		song_id = np["id"]
 	else:
 		int(hash, 16)  # validate hex
-	hash += "%"
-	cur.execute("SELECT id FROM songs WHERE hash ILIKE %s", (hash,))
-	song_id = cur.fetchone()
+		hash += "%"
+		cur.execute("SELECT id FROM songs WHERE hash ILIKE %s", (hash,))
+		song_id = cur.fetchone()[0]
 	cur.execute("SELECT id FROM users WHERE nick = %s", (user,))
 	user_id = cur.fetchone()
 	if not user_id:
 		return flask.Response(status=400)
 	cur.execute("""DELETE FROM favorites
-			WHERE account = %s AND song = %s;""", (user_id[0], song_id[0]))
+			WHERE account = %s AND song = %s;""", (user_id[0], song_id))
 	return flask.Response(status=200)
 
 @app.route("/api/queue")
@@ -218,29 +213,20 @@ def info(hash, cur):
 		return flask.Response(status=404)
 	return song
 
-def playing_publisher():
-	L.info("Starting PubSub listener")
-	pubsub = redis.pubsub()
-	pubsub.subscribe("playing")
-	for m in pubsub.listen():
-		if m["type"] != "message":
-			continue
-		L.debug("Emitting now playing info")
-		socketio.emit("playing", redis.get("np_data").decode("utf-8"))
-eventlet.spawn_n(playing_publisher)
-
 @socketio.on("connect")
 def ws_connect():
-	emit("playing", redis.get("np_data").decode("utf-8"))
+	emit("playing", json.dumps(np))
+
+try:
+	np = requests.get(kawa('np')).json()
+except:
+	np = None
 
 @app.route("/admin/playing", methods=["POST"])
-def update_playing():
+@with_pg_cursor
+def update_playing(cur):
+	global np
 	np = flask.request.get_json()
-	redis.set("np_data", json.dumps(np))
-	redis.publish("playing", json.dumps(np))
-	redis.zadd("history", time.time(), json.dumps(np))
+	cur.execute("""INSERT INTO history (data) VALUES (%s)""", (np,))
+	socketio.emit("playing", json.dumps(np))
 	return ""
-
-if __name__ == '__main__':
-	app.debug = os.environ.get("FLASK_DEBUG", "0").lower() in ("1", "true", "on")
-	socketio.run(app)

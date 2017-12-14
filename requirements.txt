@@ -1,6 +1,5 @@
 flask
 psycopg2
-redis
 flask-socketio
 eventlet
 gunicorn
