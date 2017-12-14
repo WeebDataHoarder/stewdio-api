@@ -1,0 +1,51 @@
+# Maintainer: minus <minus@mnus.de>
+
+_gitname=stewdio-api
+pkgname="${_gitname}-git"
+_gitbranch=master
+pkgver=r100.3608583
+pkgrel=1
+pkgdesc="Stewdio web radio core API server"
+url="https://git.sr.ht/~minus/${_gitname}"
+license=('MIT')
+source=("git+https://git.sr.ht/~minus/${_gitname}#branch=${_gitbranch}")
+source=("stewdio-api::git+file:///home/minus/dev/stewdio/stewdio-search/.git#branch=master")
+sha512sums=('SKIP')
+arch=('any')
+depends=(
+  'gunicorn'
+  'python'
+  'python-eventlet'
+  'python-flask'
+  'python-flask-socketio'
+  'python-psycopg2'
+  'python-redis'
+  'python-requests'
+  'python-rply'
+)
+makedepends=('git')
+conflicts=("${_gitname}")
+provides=("${_gitname}")
+install=install
+
+pkgver() {
+  cd "${srcdir}/${_gitname}"
+  (
+    set -o pipefail
+    git describe --long 2>/dev/null | sed 's/\([^-]*-g\)/r\1/;s/-/./g' ||
+      printf "r%s.%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
+  )
+}
+
+build() {
+  cd "${srcdir}/${_gitname}"
+  python setup.py build
+}
+
+package() {
+  cd "${srcdir}/${_gitname}"
+  python setup.py install --root="${pkgdir}" --optimize=1
+  install -Dm644 contrib/archlinux/stewdio-api.service "${pkgdir}/usr/lib/systemd/system/${_gitname}.service"
+}
+
+# vim:set et sw=2 sts=2:

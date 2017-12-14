@@ -1,0 +1,3 @@
+post_install() {
+	grep '^stewdio:' /etc/passwd &>/dev/null || useradd -d / -s /usr/bin/nologin stewdio >/dev/null
+}
