@@ -10,10 +10,7 @@ kawa_api = "http://127.0.0.1:4040/"
 postgres = ThreadedConnectionPool(
 	minconn=1,
 	maxconn=10,
-	user="radio",
-	database="music",
-	password="radio",
-	host="127.0.0.1"
+	database="music"
 )
 
 redis = StrictRedis(
