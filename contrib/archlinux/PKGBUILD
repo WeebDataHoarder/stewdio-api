@@ -3,7 +3,7 @@
 _gitname=stewdio-api
 pkgname="${_gitname}-git"
 _gitbranch=master
-pkgver=r100.3608583
+pkgver=r101.783e2de
 pkgrel=1
 pkgdesc="Stewdio web radio core API server"
 url="https://git.sr.ht/~minus/${_gitname}"
@@ -26,6 +26,7 @@ depends=(
 makedepends=('git')
 conflicts=("${_gitname}")
 provides=("${_gitname}")
+backup=('etc/stewdio/api.conf')
 install=install
 
 pkgver() {
@@ -46,6 +47,7 @@ package() {
   cd "${srcdir}/${_gitname}"
   python setup.py install --root="${pkgdir}" --optimize=1
   install -Dm644 contrib/archlinux/stewdio-api.service "${pkgdir}/usr/lib/systemd/system/${_gitname}.service"
+  install -Dm644 stewdio-api.conf "${pkgdir}/etc/stewdio/api.conf"
 }
 
 # vim:set et sw=2 sts=2:

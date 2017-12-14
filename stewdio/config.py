@@ -1,23 +1,34 @@
+import configparser
 import logging
-from pathlib import Path
 from psycopg2.pool import ThreadedConnectionPool
 from redis import StrictRedis, BlockingConnectionPool
 
-index_dir = Path(__file__).parent / "indexdir"
+config = configparser.ConfigParser()
+config.read(['/etc/stewdio/api.conf', 'stewdio-api.conf'])
 
-kawa_api = "http://127.0.0.1:4040/"
+kawa_api = config['kawa']['url']
+if not kawa_api.endswith('/'):
+    kawa_api += '/'
 
+cfg_pg = config['postgres']
 postgres = ThreadedConnectionPool(
-	minconn=1,
-	maxconn=10,
-	database="music"
+    minconn=int(cfg_pg['minconn']),
+    maxconn=int(cfg_pg['maxconn']),
+    database=cfg_pg['database'],
+    user=cfg_pg['user'],
+    password=cfg_pg['password'],
+    host=cfg_pg['host'],
+    port=int(cfg_pg['port']),
 )
 
-redis = StrictRedis(
-	connection_pool=BlockingConnectionPool(
-		max_connections=10
-	)
-)
+cfg_redis = config['redis']
+redis = StrictRedis(connection_pool=BlockingConnectionPool(
+    max_connections=int(cfg_redis['max_connections']),
+    host=cfg_redis['host'],
+    password=cfg_redis['password'],
+    port=int(cfg_redis['port']),
+    db=int(cfg_redis['db']),
+))
 
 fmt = logging.Formatter("[%(asctime)s] %(levelname)s: %(pathname)s:%(funcName)s(%(lineno)s): %(message)s")
 logger = logging.getLogger()
