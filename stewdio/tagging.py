@@ -1,10 +1,9 @@
+from .misc import with_pg_cursor, json_api, song_hash2id
+
+from flask import Blueprint
 import psycopg2
 import psycopg2.extras
 import logging
-
-from misc import with_pg_cursor, json_api, song_hash2id
-
-from flask import Blueprint
 
 
 L = logging.getLogger("stewdio.tagging")

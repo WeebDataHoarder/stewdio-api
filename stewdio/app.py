@@ -1,8 +1,8 @@
-from config import redis
-import config
-import tagging
-from misc import json_api, with_pg_cursor
-from search import search as search_internal, search_by_hash, search_favorites, get_random
+from .config import redis
+from . import config
+from . import tagging
+from .misc import json_api, with_pg_cursor
+from .search import search as search_internal, search_by_hash, search_favorites, get_random
 
 import os
 import json
