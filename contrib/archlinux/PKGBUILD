@@ -3,7 +3,7 @@
 _gitname=stewdio-api
 pkgname="${_gitname}-git"
 _gitbranch=master
-pkgver=r101.783e2de
+pkgver=r101.4f81483
 pkgrel=1
 pkgdesc="Stewdio web radio core API server"
 url="https://git.sr.ht/~minus/${_gitname}"

@@ -42,8 +42,7 @@ pg = ParserGenerator(
         precedence=[
             ('left', ['AND', 'OR']),
             ('left', ['NOT']),
-            ],
-        cache_id='query-lang')
+            ])
 
 
 
