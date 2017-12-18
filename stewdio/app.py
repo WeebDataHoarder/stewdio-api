@@ -1,25 +1,26 @@
+import json
+import logging
+import os
+import random
+from urllib.parse import urlsplit, parse_qs
+
+import flask
+import psycopg2.extras
+import requests
+from flask_sockets import Sockets
+from geventwebsocket.websocket import WebSocket
+
 from . import config
 from . import tagging
 from .misc import json_api, with_pg_cursor
+from .pubsub import register_client, publish
 from .search import search as search_internal, search_by_hash, search_favorites, get_random
-
-import os
-import json
-import flask
-from flask_socketio import SocketIO, emit
-from urllib.parse import urlsplit, parse_qs
-import psycopg2.extras
-import eventlet
-import requests
-import random
-import time
-import logging
 
 L = logging.getLogger("stewdio.app")
 
 app = flask.Flask(__name__)
 app.register_blueprint(tagging.api)
-socketio = SocketIO(app)
+websocket = Sockets(app)
 
 def kawa(api_function_name):
 	return config.kawa_api + api_function_name
@@ -213,9 +214,10 @@ def info(hash, cur):
 		return flask.Response(status=404)
 	return song
 
-@socketio.on("connect")
-def ws_connect():
-	emit("playing", json.dumps(np))
+@websocket.route("/api/playing")
+def ws_connect(ws: WebSocket):
+	ws.send(json.dumps(np))
+	register_client(ws)
 
 try:
 	np = requests.get(kawa('np')).json()
@@ -228,5 +230,5 @@ def update_playing(cur):
 	global np
 	np = flask.request.get_json()
 	cur.execute("""INSERT INTO history (data) VALUES (%s)""", (np,))
-	socketio.emit("playing", json.dumps(np))
+	publish(json.dumps(np))
 	return ""

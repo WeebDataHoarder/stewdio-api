@@ -20,7 +20,7 @@ postgres = ThreadedConnectionPool(
     port=int(cfg_pg['port']),
 )
 
-fmt = logging.Formatter("[%(asctime)s] %(levelname)s: %(pathname)s:%(funcName)s(%(lineno)s): %(message)s")
+fmt = logging.Formatter("[%(asctime)s] %(levelname)s: %(filename)s:%(funcName)s(%(lineno)s): %(message)s")
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 
