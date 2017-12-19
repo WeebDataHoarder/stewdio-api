@@ -14,6 +14,7 @@ unqualified = string ;
 
 combination = query , [ ( AND | OR ) ] , query ;
 
+not = NOT | MINUS ;
 inverted_query = NOT , query ;
 
 subquery = LPAREN , query , RPAREN ;
@@ -28,7 +29,7 @@ lg.add('OR', r'OR')
 lg.add('NOT', r'NOT')
 lg.add('WORD', r'[^:"\'()\s=-][^:)\s=]*')
 lg.add('STRING', r'"[^"]*"|\'[^\']*\'')
-#lg.add('MINUS', r'-')
+lg.add('MINUS', r'-')
 lg.add('LPAREN', r'\(')
 lg.add('RPAREN', r'\)')
 lg.add('COLON', r':')
@@ -41,7 +42,7 @@ pg = ParserGenerator(
         [rule.name for rule in lg.rules],
         precedence=[
             ('left', ['AND', 'OR']),
-            ('left', ['NOT']),
+            ('left', ['NOT', 'MINUS']),
             ])
 
 
@@ -57,6 +58,8 @@ def main(p):
 @pg.production('query : elemental_query')
 @pg.production('elemental_query : qualified')
 @pg.production('elemental_query : unqualified')
+@pg.production('not : NOT')
+@pg.production('not : MINUS')
 def alias(p):
     return p[0]
 
@@ -86,7 +89,7 @@ def unqualified(p):
     return Unqualified(p[0])
 
 
-@pg.production('inverted_query : NOT query')
+@pg.production('inverted_query : not query', precedence='NOT')
 def inverted_query(p):
     return Not(p[1])
 

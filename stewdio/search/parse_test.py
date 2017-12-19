@@ -19,7 +19,7 @@ cases = (
     ('''one in a billion may'n''', And(And(And(And(Unqualified(String('one')), Unqualified(String('in'))), Unqualified(String('a'))), Unqualified(String('billion'))), Unqualified(String("may'n"))), None),
     ('''(artist:mizuki OR artist:水樹) AND NOT fav:minus AND album:'supernal liberty' OR million''', Or(And(And(Or(Qualified('artist', String('mizuki')), Qualified('artist', String('水樹'))), Not(Qualified('fav', String('minus')))), Qualified('album', String('supernal liberty'))), Unqualified(String('million'))), None),
     ('''world.execute(me)''', (ValueError, "Ran into a Token('RPAREN', ')') where it wasn't expected"), None),
-#    ('''path:"comet lucifer" -inst''', (ValueError, "Ran into a Token('WORD', '-inst') where it wasn't expected"), None),
+    ('''path:"comet lucifer" -inst''', And(Qualified('path', String('comet lucifer')), Not(Unqualified(String('inst')))), None),
     ('''(fav:minus OR fav:nyc OR fav:jdiez) NOT fav:sircmpwn''', And(Or(Or(Qualified('fav', String('minus')), Qualified('fav', String('nyc'))), Qualified('fav', String('jdiez'))), Not(Qualified('fav', String('sircmpwn')))), Composed([SQL('('), SQL('('), SQL('('), SQL('ARRAY['), Literal('minus'), SQL('] <@ '), SQL('array_agg(users.nick)'), SQL(' OR '), SQL('ARRAY['), Literal('nyc'), SQL('] <@ '), SQL('array_agg(users.nick)'), SQL(')'), SQL(' OR '), SQL('ARRAY['), Literal('jdiez'), SQL('] <@ '), SQL('array_agg(users.nick)'), SQL(')'), SQL(' AND '), SQL('NOT '), SQL('ARRAY['), Literal('sircmpwn'), SQL('] <@ '), SQL('array_agg(users.nick)'), SQL(')')])),
 )
 
