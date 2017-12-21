@@ -107,9 +107,7 @@ def download(hash, cur):
 		return flask.Response(status=404)
 	return flask.send_file(path, as_attachment=True, attachment_filename=att_fn)
 
-@app.route("/api/listeners")
-@json_api
-def listeners():
+def _listeners():
 	r = requests.get(kawa('listeners'))
 	named_listeners = []
 	num_listeners = 0
@@ -125,12 +123,17 @@ def listeners():
 		"named_listeners": named_listeners,
 	}
 
+@app.route("/api/listeners")
+@json_api
+def listeners():
+	return _listeners()
+
 def listeners_updater():
 	listeners_data = {}
 	while True:
 		old_data = listeners_data
 		try:
-			listeners_data = listeners()
+			listeners_data = _listeners()
 		except:
 			L.exception("Exception while updating listener data")
 		if listeners_data != old_data:
