@@ -130,7 +130,7 @@ def listeners_updater():
 	while True:
 		old_data = listeners_data
 		try:
-			listeners()
+			listeners_data = listeners()
 		except:
 			L.exception("Exception while updating listener data")
 		if listeners_data != old_data:
