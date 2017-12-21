@@ -59,7 +59,7 @@ def search_by_hash(cursor, hash):
 def search_favorites(cursor, user):
     q = BASE_QUERY.format(where=SQL(''))
     q += SQL(" HAVING ARRAY[%s] <@ array_agg(users.nick)")
-    cursor.execute(q, (user,))
+    cursor.execute(q, (user.lower(),))
     return [dict(r) for r in cursor]
 
 def get_random(cursor):

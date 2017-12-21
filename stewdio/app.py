@@ -151,7 +151,7 @@ def check_favorite(user, hash, cur=None):
 		hash += "%"
 		cur.execute("SELECT id FROM songs WHERE hash ILIKE %s", (hash,))
 		song_id = cur.fetchone()[0]
-	cur.execute("SELECT id FROM users WHERE nick = %s", (user,))
+	cur.execute("SELECT id FROM users WHERE nick = %s", (user.lower(),))
 	user_id = cur.fetchone()
 	if not user_id:
 		return {"favorite": False}
@@ -169,10 +169,10 @@ def add_favorite(user, hash, cur=None):
 		hash += "%"
 		cur.execute("SELECT id FROM songs WHERE hash ILIKE %s", (hash,))
 		song_id = cur.fetchone()[0]
-	cur.execute("SELECT id FROM users WHERE nick = %s", (user,))
+	cur.execute("SELECT id FROM users WHERE nick = %s", (user.lower(),))
 	user_id = cur.fetchone()
 	if not user_id:
-		cur.execute("INSERT INTO users (nick) VALUES (%s) RETURNING id", (user,))
+		cur.execute("INSERT INTO users (nick) VALUES (%s) RETURNING id", (user.lower(),))
 		user_id = cur.fetchone()
 	try:
 		cur.execute("""INSERT INTO favorites
@@ -192,7 +192,7 @@ def remove_favorite(user, hash, cur=None):
 		hash += "%"
 		cur.execute("SELECT id FROM songs WHERE hash ILIKE %s", (hash,))
 		song_id = cur.fetchone()[0]
-	cur.execute("SELECT id FROM users WHERE nick = %s", (user,))
+	cur.execute("SELECT id FROM users WHERE nick = %s", (user.lower(),))
 	user_id = cur.fetchone()
 	if not user_id:
 		return flask.Response(status=400)

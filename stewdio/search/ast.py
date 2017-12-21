@@ -5,6 +5,7 @@ from psycopg2.sql import Literal, SQL
 class Ops:
     ILIKE = lambda k, v: k + SQL(" ILIKE '%' || ") + v + SQL(" || '%'")
     IN = lambda k, v: SQL("ARRAY[") + v + SQL("] <@ ") + k
+    IN_LOWERCASE = lambda k, v: SQL("ARRAY[lower(") + v + SQL(")] <@ ") + k
     EQUALS = lambda k, v: k + SQL(" ILIKE ") + v
 
 
@@ -20,7 +21,7 @@ QUALIFIERS = {
     'album': OpsConfig(SQL('albums.name'), (Ops.ILIKE, Ops.EQUALS)),
     'hash': OpsConfig(SQL('songs.hash'), (Ops.ILIKE, Ops.EQUALS)),
     'path': OpsConfig(SQL('songs.location'), (Ops.ILIKE, Ops.EQUALS)),
-    'fav': OpsConfig(SQL('array_agg(users.nick)'), (Ops.IN,)),
+    'fav': OpsConfig(SQL('array_agg(users.nick)'), (Ops.IN_LOWERCASE,)),
     'tag': OpsConfig(SQL('array_agg(tags.name)'), (Ops.IN,)),
 }
 
