@@ -251,5 +251,4 @@ def update_playing(cur):
 	cur.execute("""INSERT INTO history (data) VALUES (%s)""", (np,))
 	pubsub.playing.publish(np)
 	pubsub.events.playing(np)
-	pubsub.events.queue(dict(action='remove', song=np))
 	return ""
