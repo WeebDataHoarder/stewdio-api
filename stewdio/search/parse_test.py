@@ -21,6 +21,7 @@ cases = (
     ('''world.execute(me)''', (ValueError, "Ran into a Token('RPAREN', ')') where it wasn't expected"), None),
     ('''path:"comet lucifer" -inst''', And(Qualified('path', String('comet lucifer')), Not(Unqualified(String('inst')))), None),
     ('''(fav:minus OR fav:nyc OR fav:jdiez) NOT fav:sircmpwn''', And(Or(Or(Qualified('fav', String('minus')), Qualified('fav', String('nyc'))), Qualified('fav', String('jdiez'))), Not(Qualified('fav', String('sircmpwn')))), Composed([SQL('('), SQL('('), SQL('('), SQL('ARRAY[lower('), Literal('minus'), SQL(')] <@ '), SQL('array_agg(users.nick)'), SQL(' OR '), SQL('ARRAY[lower('), Literal('nyc'), SQL(')] <@ '), SQL('array_agg(users.nick)'), SQL(')'), SQL(' OR '), SQL('ARRAY[lower('), Literal('jdiez'), SQL(')] <@ '), SQL('array_agg(users.nick)'), SQL(')'), SQL(' AND '), SQL('NOT '), SQL('ARRAY[lower('), Literal('sircmpwn'), SQL(')] <@ '), SQL('array_agg(users.nick)'), SQL(')')])),
+    ('''title="why?"''', Qualified('title', String('why?'), op=Ops.EQUALS), None),
 )
 
 @pytest.mark.parametrize('input,expected_ast,expected_sql', cases)

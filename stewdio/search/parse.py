@@ -123,8 +123,16 @@ lexer = lg.build()
 parser = pg.build()
 
 
+def _printing(it):
+    for item in it:
+        print(item)
+        yield item
+
+
 def parse(q):
-    return parser.parse(lexer.lex(q))
+    lex = lexer.lex(q)
+    # lex = _printing(lex)
+    return parser.parse(lex)
 
 
 if __name__ == '__main__':

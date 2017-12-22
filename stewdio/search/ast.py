@@ -3,10 +3,18 @@
 from psycopg2.sql import Literal, SQL
 
 class Ops:
-    ILIKE = lambda k, v: k + SQL(" ILIKE '%' || ") + v + SQL(" || '%'")
-    IN = lambda k, v: SQL("ARRAY[") + v + SQL("] <@ ") + k
-    IN_LOWERCASE = lambda k, v: SQL("ARRAY[lower(") + v + SQL(")] <@ ") + k
-    EQUALS = lambda k, v: k + SQL(" ILIKE ") + v
+    ILIKE = 'ILIKE'
+    IN = 'IN'
+    IN_LOWERCASE = 'IN_LOWERCASE'
+    EQUALS = 'EQUALS'
+
+
+OP_MAP = {
+    'ILIKE': lambda k, v: k + SQL(" ILIKE '%' || ") + v + SQL(" || '%'"),
+    'IN': lambda k, v: SQL("ARRAY[") + v + SQL("] <@ ") + k,
+    'IN_LOWERCASE': lambda k, v: SQL("ARRAY[lower(") + v + SQL(")] <@ ") + k,
+    'EQUALS': lambda k, v: k + SQL(" ILIKE ") + v
+}
 
 
 class OpsConfig:
@@ -98,20 +106,24 @@ class Qualified:
         assert qualifier in QUALIFIERS
         self.qualifier = qualifier
         self.search_term = search_term
+        self.oc = QUALIFIERS[self.qualifier]
         self.op = op
 
     def build(self):
-        oc = QUALIFIERS[self.qualifier]
-        op = self.op or oc.supported_ops[0]
-        return op(oc.field, self.search_term.build())
+        op = self.op or self.oc.supported_ops[0]
+        return OP_MAP[op](self.oc.field, self.search_term.build())
 
     def __repr__(self):
-        return f'{self.__class__.__name__}({self.qualifier!r}, {self.search_term!r})'
+        op = ''
+        if self.op:
+            op = f', op=Ops.{self.op}'
+        return f'{self.__class__.__name__}({self.qualifier!r}, {self.search_term!r}{op})'
 
     def __eq__(self, other):
         return (isinstance(other, self.__class__)
                 and other.qualifier == self.qualifier
-                and other.search_term == self.search_term)
+                and other.search_term == self.search_term
+                and other.op == self.op)
 
 
 class Unqualified:
@@ -122,7 +134,7 @@ class Unqualified:
         def build_one(qualifier):
             oc = QUALIFIERS[qualifier]
             op = oc.supported_ops[0]
-            return op(oc.field, self.search_term.build())
+            return OP_MAP[op](oc.field, self.search_term.build())
         return SQL('(') + SQL(' OR ').join(build_one(q) for q in UNQUALIFIERS) + SQL(')')
 
     def __repr__(self):
