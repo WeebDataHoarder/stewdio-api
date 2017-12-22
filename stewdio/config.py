@@ -21,7 +21,7 @@ postgres = ThreadedConnectionPool(
 )
 
 fmt = logging.Formatter("[%(asctime)s] %(levelname)s: %(filename)s:%(funcName)s(%(lineno)s): %(message)s")
-logger = logging.getLogger()
+logger = logging.getLogger("stewdio")
 logger.setLevel(logging.DEBUG)
 
 # stderr logging
