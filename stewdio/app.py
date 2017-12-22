@@ -36,6 +36,13 @@ def index():
 def search(q, cur):
 	return search_internal(cur, q, limit=int(flask.request.args.get("limit", 0)) or None)
 
+@app.route("/api/search")
+@with_pg_cursor
+@json_api
+def search2(cur):
+	q = flask.request.args['q']
+	return search_internal(cur, q, limit=int(flask.request.args.get("limit", 0)) or None)
+
 @app.route("/api/random")
 @with_pg_cursor
 @json_api
