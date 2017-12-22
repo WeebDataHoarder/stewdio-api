@@ -79,13 +79,13 @@ def request_random(terms, cur):
 
 @app.route("/api/skip")
 def skip():
-	song = requests.post(kawa('skip'))
+	song = requests.post(kawa('skip')).json()
 	pubsub.events.queue(dict(action='remove', song=song))
 	return ""
 
 @app.route("/api/queue/head", methods=['DELETE'])
 def queue_remove_head():
-	song = requests.delete(kawa('queue/head'))
+	song = requests.delete(kawa('queue/head')).json()
 	pubsub.events.queue(dict(action='remove', song=song))
 	return ""
 
