@@ -40,7 +40,7 @@ def search(q, cur):
 @with_pg_cursor
 @json_api
 def get_random_song(cur):
-	return get_random(cur)
+	return get_random(cur, config.off_vocal_regex)
 
 def queue_song(song):
 	L.info("Song {} requested".format(song["hash"]))

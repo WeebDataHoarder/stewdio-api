@@ -62,8 +62,10 @@ def search_favorites(cursor, user):
     cursor.execute(q, (user.lower(),))
     return [dict(r) for r in cursor]
 
-def get_random(cursor):
+def get_random(cursor, off_vocal_regex=None):
     where = SQL("WHERE songs.status = 'active'")
+    if off_vocal_regex:
+        where += SQL(' AND title !~* ') + Literal(off_vocal_regex)
     q = BASE_QUERY.format(where=where)
     q += SQL(' ORDER BY random()')
     q += SQL(' LIMIT 1')
