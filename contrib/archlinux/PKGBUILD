@@ -3,13 +3,12 @@
 _gitname=stewdio-api
 pkgname="${_gitname}-git"
 _gitbranch=master
-pkgver=r104.cf11f4a
+pkgver=r116.a6b26f6
 pkgrel=1
 pkgdesc="Stewdio web radio core API server"
 url="https://git.sr.ht/~minus/${_gitname}"
 license=('MIT')
 source=("git+https://git.sr.ht/~minus/${_gitname}#branch=${_gitbranch}")
-source=("stewdio-api::git+file:///home/minus/dev/stewdio/stewdio-search/.git#branch=master")
 sha512sums=('SKIP')
 arch=('any')
 depends=(
