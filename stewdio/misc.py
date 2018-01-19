@@ -52,20 +52,20 @@ def json_api(fn):
 		)
 	return wrapper
 
-def song_hash2id(*keyword_names):
-	def decorator(fn):
-		@wraps(fn)
-		def wrapper(*args, **kwargs):
-			if "cur" not in kwargs:
-				raise RuntimeError("DB connection injection is required")
-			cur = kwargs["cur"]
-			for keyword_name in keyword_names:
-				if keyword_name in kwargs:
-					arg = kwargs[keyword_name]
-					int(arg, 16)  # sanity check
-					arg += "%"
-					cur.execute("SELECT id FROM songs WHERE hash ILIKE %s", (arg,))
-					kwargs[keyword_name] = cur.fetchone()[0]
-			return fn(*args, **kwargs)
-		return wrapper
-	return decorator
+def with_db_session(fn):
+	@wraps(fn)
+	def wrapper(*args, **kwargs):
+		if "session" in kwargs:
+			raise RuntimeError("A session argument already exists!")
+		s = kwargs["session"] = config.db.create_session()
+		try:
+			ret = fn(*args, **kwargs)
+			s.commit()
+			return ret
+		except:
+			s.rollback()
+			raise
+		finally:
+			s.commit()
+			s.close()
+	return wrapper

@@ -1,27 +1,16 @@
 from sqlalchemy import create_engine, event
-from sqlalchemy.orm import scoped_session, sessionmaker
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import scoped_session, sessionmaker, Session
 from sqlalchemy.ext.declarative import declarative_base
 from datetime import datetime
-from werkzeug.local import LocalProxy
 
 Base = declarative_base()
 
-_db = None
-db = LocalProxy(lambda: _db)
-
-class DbSession():
-    def __init__(self, connection_string="postgresql://postgres@localhost/music",
-            assign_global=True):
-        global Base, _db
+class Database:
+    def __init__(self, connection_string) -> Engine:
         self.engine = create_engine(connection_string)
-        self.session = scoped_session(sessionmaker(
-            autocommit=False,
-            autoflush=False,
-            bind=self.engine))
-        Base.query = self.session.query_property()
-        if assign_global:
-            _db = self
-        import radiodb.types
+
+        from . import types
 
         @event.listens_for(Base, 'before_insert', propagate=True)
         def before_insert(mapper, connection, target):
@@ -35,5 +24,11 @@ class DbSession():
             if hasattr(target, 'updated'):
                 target.updated = datetime.utcnow()
 
-    def create(self):
-        Base.metadata.create_all(bind=self.engine)
+    def create_session(self) -> Session:
+        session = scoped_session(sessionmaker(
+            autocommit=False,
+            autoflush=False,
+            bind=self.engine))
+        Base.query = session.query_property()
+
+        return session

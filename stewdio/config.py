@@ -3,6 +3,8 @@ import logging
 import re
 from psycopg2.pool import ThreadedConnectionPool
 
+from .database import Database
+
 config = configparser.ConfigParser()
 config.read(['/etc/stewdio/api.conf', 'stewdio-api.conf'])
 
@@ -20,6 +22,8 @@ postgres = ThreadedConnectionPool(
     host=cfg_pg['host'],
     port=int(cfg_pg['port']),
 )
+
+db = Database(f"postgresql://{cfg_pg['user']}:{cfg_pg['password']}@{cfg_pg['host']}:{cfg_pg['port']}/{cfg_pg['database']}")
 
 cfg_search: configparser.SectionProxy = config['search']
 off_vocal_regex = cfg_search.get('off-vocal-regex')

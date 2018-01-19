@@ -1,6 +1,7 @@
 import sqlalchemy as sa
 import sqlalchemy_utils as sau
-from radiodb.database import Base
+
+from ..database import Base
 from enum import Enum
 
 class SongStatus(Enum):
@@ -26,9 +27,21 @@ class Song(Base):
     artist_id = sa.Column(sa.Integer,
             sa.ForeignKey("artists.id"),
             name="artist")
-    artist = sa.orm.relationship("Artist", backref=sa.orm.backref("songs"))
+    artist = sa.orm.relationship("Artist",
+            back_populates="songs")
 
     album_id = sa.Column(sa.Integer,
             sa.ForeignKey("albums.id"),
             name="album")
-    album = sa.orm.relationship("Album", backref=sa.orm.backref("albums"))
+    album = sa.orm.relationship("Album",
+            back_populates="songs")
+
+    favored_by = sa.orm.relationship("User",
+            secondary="favorites",
+            collection_class=set,
+            back_populates="favorites")
+
+    tags = sa.orm.relationship("Tag",
+            secondary="taggings",
+            collection_class=set,
+            back_populates="songs")

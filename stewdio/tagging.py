@@ -1,42 +1,51 @@
-from .misc import with_pg_cursor, json_api, song_hash2id
-
-from flask import Blueprint
-import psycopg2
-import psycopg2.extras
 import logging
+import flask
 
+from .misc import json_api, with_db_session
+from .types import Song, Tag
 
 L = logging.getLogger("stewdio.tagging")
 
-api = Blueprint("tagging", "tagging", url_prefix="/api/tag")
+api = flask.Blueprint("tagging", "tagging", url_prefix="/api/tag")
 
-@api.route("/<song_id>/add/<tag>", methods=["POST"])
-@with_pg_cursor
-@song_hash2id("song_id")
+@api.route("/<hash>/add/<tag_name>", methods=["POST"])
 @json_api
-def add(cur, song_id, tag):
-	cur.execute("SELECT id FROM tags WHERE name = %s", (tag,))
-	res = cur.fetchone()
-	if not res:
-		cur.execute("INSERT INTO tags (name) VALUES (%s) RETURNING id", (tag,))
-		res = cur.fetchone()
+@with_db_session
+def add(hash, tag_name, session):
+	song = session.query(Song).filter(Song.hash.startswith(hash)).one_or_none()
+	if not song:
+		return {"error": "song does not exist"}, 404
+	tag = session.query(Tag).filter_by(name=tag_name).one_or_none()
+	if not tag:
+		tag = Tag(name=tag_name)
+		session.add(tag)
 
-	try:
-		cur.execute("INSERT INTO taggings (song, tag) VALUES (%s, %s)", (song_id, res[0]))
-	except psycopg2.IntegrityError:
+	if tag in song.tags:
 		return {"created": False}, 200
+	song.tags.add(tag)
 	return {"created": True}, 201
 
-@api.route("/<song_id>/remove/<tag>", methods=["POST"])
-@with_pg_cursor
-@song_hash2id("song_id")
+@api.route("/<hash>/remove/<tag_name>", methods=["POST"])
 @json_api
-def remove(cur, song_id, tag):
-	cur.execute("SELECT id FROM tags WHERE name = %s", (tag,))
-	res = cur.fetchone()
-	if not res:
+@with_db_session
+def remove(hash, tag_name, session):
+	song = session.query(Song).filter(Song.hash.startswith(hash)).one_or_none()
+	if not song:
+		return {"error": "song does not exist"}, 404
+	tag = session.query(Tag).filter_by(name=tag_name).one_or_none()
+	if not tag:
 		return {"error": "tag does not exist"}, 404
-	cur.execute("DELETE FROM taggings WHERE song = %s AND tag = %s", (song_id, res[0]))
-	if cur.rowcount == 0:
+
+	if tag not in song.tags:
 		return {"removed": False}, 200
+	song.tags.remove(tag)
 	return {"removed": True}, 201
+
+@api.route("/<hash>")
+@json_api
+@with_db_session
+def get(hash, session):
+	song = session.query(Song).filter(Song.hash.startswith(hash)).one_or_none()
+	if not song:
+		return {"error": "song does not exist"}, 404
+	return {"tags": [t.name for t in song.tags]}, 200

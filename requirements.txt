@@ -5,3 +5,5 @@ gevent
 gunicorn
 requests
 rply
+sqlalchemy
+sqlalchemy-utils

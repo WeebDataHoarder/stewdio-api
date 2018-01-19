@@ -15,8 +15,8 @@ fileConfig(config.config_file_name)
 
 # add your model's MetaData object here
 # for 'autogenerate' support
-from radiodb.database import DbSession, Base
-db = DbSession()
+from stewdio.database import Database, Base
+db = Database(config.get_main_option("sqlalchemy.url"))
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,
