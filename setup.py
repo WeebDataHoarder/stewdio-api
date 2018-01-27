@@ -14,10 +14,7 @@ setup(
     packages = [
         'stewdio',
         'stewdio.search',
-        'stewdio.db',
-        'stewdio.db.types',
-        'stewdio.db.alembic',
-        'stewdio.db.alembic.versions'
+        'stewdio.types',
         ],
     version = ver,
     description = 'Stewdio radio controller',
