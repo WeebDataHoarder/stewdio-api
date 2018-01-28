@@ -241,6 +241,32 @@ def info(hash, cur):
 		return flask.Response(status=404)
 	return song
 
+@app.route("/api/status")
+@with_pg_cursor
+@json_api
+def status(cur):
+	database = False
+	try:
+		cur.execute('''SELECT 1;''')
+		database = cur.fetchone()[0] == 1
+	except Exception as e:
+		L.exception("Database check failed")
+
+	kawa_status = False
+	try:
+		kawa_status = 'id' in requests.get(kawa('np')).json()
+	except Exception as e:
+		L.exception("Kawa check failed")
+
+	storage = {}
+	for name, path in config.storage_status.items():
+		storage[name] = os.path.exists(path)
+
+	return dict(
+		database=database,
+		kawa=kawa_status,
+		storage=storage)
+
 @websocket.route("/api/events/playing")
 def ws_connect(ws: WebSocket):
 	ws.send(json.dumps(np))

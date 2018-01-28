@@ -30,6 +30,9 @@ off_vocal_regex = cfg_search.get('off-vocal-regex')
 if off_vocal_regex:
     re.compile(off_vocal_regex)  # verify
 
+cfg_storage_status: configparser.SectionProxy = config['storage-status']
+storage_status = dict(cfg_storage_status)
+
 fmt = logging.Formatter("[%(asctime)s] %(levelname)s: %(filename)s:%(funcName)s(%(lineno)s): %(message)s")
 logger = logging.getLogger("stewdio")
 logger.setLevel(logging.DEBUG)
