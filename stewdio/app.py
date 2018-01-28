@@ -254,7 +254,7 @@ except:
 @with_pg_cursor
 def update_playing(cur):
 	global np
-	np = flask.request.get_json()
+	np = flask.request.get_json(force=True)
 	cur.execute("""INSERT INTO history (data) VALUES (%s)""", (np,))
 	pubsub.playing.publish(np)
 	pubsub.events.playing(np)
