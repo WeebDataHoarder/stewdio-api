@@ -235,12 +235,12 @@ def info(hash, cur):
 		return flask.Response(status=404)
 	return song
 
-@websocket.route("/api/playing")
+@websocket.route("/api/events/playing")
 def ws_connect(ws: WebSocket):
 	ws.send(json.dumps(np))
 	pubsub.playing.register_client(ws)
 
-@websocket.route("/api/events")
+@websocket.route("/api/events/all")
 def ws_connect(ws: WebSocket):
 	ws.send(json.dumps(dict(type='playing', data=np)))
 	pubsub.events.register_client(ws)
