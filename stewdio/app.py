@@ -136,7 +136,7 @@ def listeners():
 	return _listeners()
 
 def listeners_updater():
-	listeners_data = {}
+	listeners_data = None
 	while True:
 		old_data = listeners_data
 		try:
@@ -166,6 +166,8 @@ def favorites(user, cur):
 def check_favorite(user, hash, cur=None):
 	if hash == "playing":
 		song = np
+		if not song:
+			return flask.Response(status=500)
 	else:
 		int(hash, 16)  # validate hex
 		song = search_by_hash(cur, hash)
@@ -183,6 +185,8 @@ def check_favorite(user, hash, cur=None):
 def add_favorite(user, hash, cur=None):
 	if hash == "playing":
 		song = np
+		if not song:
+			return flask.Response(status=500)
 	else:
 		int(hash, 16)  # validate hex
 		song = search_by_hash(cur, hash)
@@ -207,6 +211,8 @@ def add_favorite(user, hash, cur=None):
 def remove_favorite(user, hash, cur=None):
 	if hash == "playing":
 		song = np
+		if not song:
+			return flask.Response(status=500)
 	else:
 		int(hash, 16)  # validate hex
 		song = search_by_hash(cur, hash)
