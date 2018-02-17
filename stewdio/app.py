@@ -26,6 +26,10 @@ websocket = Sockets(app)
 def kawa(api_function_name):
 	return config.kawa_api + api_function_name
 
+@app.before_request
+def request_logger():
+	L.info("Request: {}".format(flask.request.path))
+
 @app.route("/")
 def index():
 	return flask.render_template("index.html")
