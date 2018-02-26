@@ -3,7 +3,7 @@
 _gitname=stewdio-api
 pkgname="${_gitname}-git"
 _gitbranch=master
-pkgver=1.0.0.r1.gbfb3b18
+pkgver=1.0.0.r13.gb52568f
 pkgrel=1
 pkgdesc="Stewdio web radio core API server"
 url="https://git.sr.ht/~minus/${_gitname}"
@@ -22,6 +22,7 @@ depends=(
   'python-rply'
   'python-sqlalchemy'
   'python-sqlalchemy-utils'
+  'python-tinytag'
 )
 makedepends=('git')
 conflicts=("${_gitname}")
