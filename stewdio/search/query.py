@@ -10,8 +10,8 @@ SELECT
     songs.title AS title,
     artists.name AS artist,
     albums.name AS album,
-    songs.location AS path,
-    songs.length AS duration,
+    songs.path AS path,
+    songs.duration AS duration,
     songs.status AS status,
     array_remove(array_agg(DISTINCT tags.name), NULL) AS tags,
     array_remove(array_agg(DISTINCT users.nick), NULL) AS favored_by
@@ -29,8 +29,8 @@ GROUP BY
     songs.title,
     artists.name,
     albums.name,
-    songs.location,
-    songs.length,
+    songs.path,
+    songs.duration,
     songs.status
 ''')
 
