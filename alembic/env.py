@@ -16,6 +16,7 @@ fileConfig(config.config_file_name)
 # add your model's MetaData object here
 # for 'autogenerate' support
 from stewdio.database import Database, Base
+import stewdio.types  # models
 db = Database(config.get_main_option("sqlalchemy.url"))
 target_metadata = Base.metadata
 
