@@ -3,7 +3,7 @@ Description=Stewdio API
 After=syslog.target
 
 [Service]
-ExecStart=/usr/bin/gunicorn -b 127.0.0.1:8011 --worker-class flask_sockets.worker stewdio.app:app
+ExecStart=/usr/bin/gunicorn -b 127.0.0.1:8011 --timeout 600 --worker-class flask_sockets.worker stewdio.app:app
 Restart=always
 KillSignal=SIGQUIT
 User=stewdio
