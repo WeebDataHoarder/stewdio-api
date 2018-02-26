@@ -66,6 +66,5 @@ def with_db_session(fn):
 			s.rollback()
 			raise
 		finally:
-			s.commit()
 			s.close()
 	return wrapper

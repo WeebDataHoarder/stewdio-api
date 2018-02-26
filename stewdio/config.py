@@ -8,6 +8,16 @@ from .database import Database
 config = configparser.ConfigParser()
 config.read(['/etc/stewdio/api.conf', 'stewdio-api.conf'])
 
+fmt = logging.Formatter("[%(asctime)s] %(levelname)s: %(filename)s:%(funcName)s(%(lineno)s): %(message)s")
+logger = logging.getLogger("stewdio")
+logger.setLevel(logging.DEBUG)
+
+# stderr logging
+sh = logging.StreamHandler()
+sh.setLevel(logging.DEBUG)
+sh.setFormatter(fmt)
+logger.addHandler(sh)
+
 kawa_api = config['kawa']['url']
 if not kawa_api.endswith('/'):
     kawa_api += '/'
@@ -32,14 +42,3 @@ if off_vocal_regex:
 
 cfg_storage_status: configparser.SectionProxy = config['storage-status']
 storage_status = dict(cfg_storage_status)
-
-fmt = logging.Formatter("[%(asctime)s] %(levelname)s: %(filename)s:%(funcName)s(%(lineno)s): %(message)s")
-logger = logging.getLogger("stewdio")
-logger.setLevel(logging.DEBUG)
-
-# stderr logging
-sh = logging.StreamHandler()
-sh.setLevel(logging.DEBUG)
-sh.setFormatter(fmt)
-logger.addHandler(sh)
-

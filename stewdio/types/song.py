@@ -45,3 +45,17 @@ class Song(Base):
             secondary="taggings",
             collection_class=set,
             back_populates="songs")
+
+    def json(self):
+        return dict(
+            **{attr: getattr(self, attr)
+               for attr in ('id', 'title', 'path', 'duration', 'hash')},
+            album=self.album.name if self.album else None,
+            artist=self.artist.name if self.artist else None,
+            status=self.status.value,
+            favored_by=[u.nick for u in self.favored_by],
+            tags=[t.name for t in self.tags],
+        )
+
+    def __str__(self):
+        return f"{self.title} by {self.artist} from {self.album}"

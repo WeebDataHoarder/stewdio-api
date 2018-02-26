@@ -1,9 +1,10 @@
 flask
-psycopg2
 flask-sockets
 gevent
 gunicorn
+psycopg2
 requests
 rply
 sqlalchemy
 sqlalchemy-utils
+tinytag

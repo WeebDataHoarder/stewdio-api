@@ -12,8 +12,9 @@ from flask_sockets import Sockets
 from geventwebsocket.websocket import WebSocket
 
 from . import config
+from . import library
 from . import tagging
-from .misc import json_api, with_pg_cursor
+from .misc import json_api, with_pg_cursor, with_db_session
 from . import pubsub
 from .search import search as search_internal, search_by_hash, search_favorites, get_random
 
@@ -285,6 +286,12 @@ try:
 	np = requests.get(kawa('np')).json()
 except:
 	np = None
+
+@app.route("/admin/library/update", methods=["POST"])
+@with_db_session
+@json_api
+def update_index(session):
+	return library.update(session, flask.request.args.get("path"))
 
 @app.route("/admin/playing", methods=["POST"])
 @with_pg_cursor

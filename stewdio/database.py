@@ -1,8 +1,11 @@
+import logging
 from datetime import datetime
 
 from sqlalchemy import create_engine, event
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import scoped_session, sessionmaker
+from sqlalchemy.orm import scoped_session, sessionmaker, Session
+
+L = logging.getLogger("stewdio.database")
 
 Base = declarative_base()
 
@@ -22,7 +25,7 @@ class Database:
             if hasattr(target, 'updated'):
                 target.updated = datetime.utcnow()
 
-    def create_session(self) -> scoped_session:
+    def create_session(self) -> Session:
         session = scoped_session(sessionmaker(
             autocommit=False,
             autoflush=False,

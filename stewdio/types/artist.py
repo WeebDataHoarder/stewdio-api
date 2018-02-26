@@ -8,3 +8,6 @@ class Artist(Base):
     songs = sa.orm.relationship("Song",
             collection_class=set,
             back_populates="artist")
+
+    def __str__(self):
+        return str(self.name)

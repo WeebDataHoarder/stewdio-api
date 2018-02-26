@@ -1,6 +1,6 @@
 from .album import Album
 from .artist import Artist
-from .song import Song
+from .song import Song, SongStatus
 from .favorite import favorites
 from .tag import Tag
 from .tagging import taggings
