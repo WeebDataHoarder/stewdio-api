@@ -5,3 +5,4 @@ from .favorite import favorites
 from .tag import Tag
 from .tagging import taggings
 from .user import User
+from .history import History
