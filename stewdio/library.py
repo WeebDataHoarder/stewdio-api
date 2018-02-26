@@ -39,14 +39,14 @@ def update(session, scan_dir):
 			if path.suffix not in ('.flac', '.mp3', '.aac', '.opus', '.ogg'):
 				continue
 			L.debug(f"Found path {path}")
-			metadata = TinyTag.get(str(path))
-			if not metadata.artist:
-				metadata.artist = metadata.albumartist
 			hash = compute_hash(path)
 			song = session.query(Song).filter_by(hash=hash).one_or_none()
 			if song:
 				L.info(f"Song {song} (path: {song.path}) already exists in database (new path: {path}), skipping")
 				continue
+			metadata = TinyTag.get(str(path))
+			if not metadata.artist:
+				metadata.artist = metadata.albumartist
 			artist = session.query(Artist).filter_by(name=metadata.artist).one_or_none()
 			if not artist and metadata.artist:
 				artist = Artist(name=metadata.artist)
