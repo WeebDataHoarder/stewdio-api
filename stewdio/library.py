@@ -34,7 +34,7 @@ def update(session, scan_dir):
 	L.info(f"Scanning directory {scan_dir} for new files")
 	for root, dirs, files in os.walk(scan_dir):
 		root = Path(root)
-		for file in files:
+		for file in sorted(files):
 			path = root / file
 			path = path.absolute()
 			if path.suffix not in ('.flac', '.mp3', '.aac', '.opus', '.ogg'):
