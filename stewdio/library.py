@@ -65,10 +65,10 @@ def update(session, scan_dir):
 				album=album,
 			)
 			session.add(song)
+			session.flush()
 			L.info(f"Added song {song}")
-			songs.append(song)
-	session.flush()
-	return [song.json() for song in songs]
+			songs.append(song.json())
+	return songs
 
 
 if __name__ == '__main__':
