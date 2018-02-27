@@ -36,6 +36,7 @@ def update(session, scan_dir):
 		root = Path(root)
 		for file in files:
 			path = root / file
+			path = path.absolute()
 			if path.suffix not in ('.flac', '.mp3', '.aac', '.opus', '.ogg'):
 				continue
 			L.debug(f"Found path {path}")
