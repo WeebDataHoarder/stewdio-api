@@ -75,5 +75,6 @@ def update(session, scan_dir):
 if __name__ == '__main__':
 	import sys
 	session = config.db.create_session()
-	update(session, sys.argv[1])
-	session.commit()
+	for path in sys.argv[1:]:
+		update(session, path)
+		session.commit()
