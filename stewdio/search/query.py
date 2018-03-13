@@ -14,7 +14,7 @@ SELECT
     songs.duration AS duration,
     songs.status AS status,
     array_remove(array_agg(DISTINCT tags.name), NULL) AS tags,
-    array_remove(array_agg(DISTINCT users.nick), NULL) AS favored_by
+    array_remove(array_agg(DISTINCT users.name), NULL) AS favored_by
 FROM songs
 JOIN artists ON songs.artist = artists.id
 JOIN albums ON songs.album = albums.id
@@ -58,7 +58,7 @@ def search_by_hash(cursor, hash):
 
 def search_favorites(cursor, user):
     q = BASE_QUERY.format(where=SQL(''))
-    q += SQL(" HAVING ARRAY[%s] <@ array_agg(users.nick)")
+    q += SQL(" HAVING ARRAY[%s] <@ array_agg(users.name)")
     cursor.execute(q, (user.lower(),))
     return [dict(r) for r in cursor]
 

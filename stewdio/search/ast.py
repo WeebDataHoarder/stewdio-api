@@ -29,7 +29,7 @@ QUALIFIERS = {
     'album': OpsConfig(SQL('albums.name'), (Ops.ILIKE, Ops.EQUALS)),
     'hash': OpsConfig(SQL('songs.hash'), (Ops.ILIKE, Ops.EQUALS)),
     'path': OpsConfig(SQL('songs.path'), (Ops.ILIKE, Ops.EQUALS)),
-    'fav': OpsConfig(SQL('array_agg(users.nick)'), (Ops.IN_LOWERCASE,)),
+    'fav': OpsConfig(SQL('array_agg(users.name)'), (Ops.IN_LOWERCASE,)),
     'tag': OpsConfig(SQL('array_agg(tags.name)'), (Ops.IN,)),
 }
 

@@ -2,7 +2,8 @@ flask
 flask-sockets
 gevent
 gunicorn
-psycopg2
+pbkdf2
+psycopg2-binary
 requests
 rply
 sqlalchemy

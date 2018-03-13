@@ -53,7 +53,7 @@ class Song(Base):
             album=self.album.name if self.album else None,
             artist=self.artist.name if self.artist else None,
             status=self.status.value,
-            favored_by=[u.nick for u in self.favored_by],
+            favored_by=[u.name for u in self.favored_by],
             tags=[t.name for t in self.tags],
         )
 

@@ -17,11 +17,13 @@ from . import tagging
 from .misc import json_api, with_pg_cursor, with_db_session
 from . import pubsub
 from .search import search as search_internal, search_by_hash, search_favorites, get_random
+from . import user
 
 L = logging.getLogger("stewdio.app")
 
 app = flask.Flask(__name__)
 app.register_blueprint(tagging.api)
+app.register_blueprint(user.api)
 websocket = Sockets(app)
 
 def kawa(api_function_name):
@@ -177,7 +179,7 @@ def check_favorite(user, hash, cur=None):
 		int(hash, 16)  # validate hex
 		song = search_by_hash(cur, hash)
 	song_id = song['id']
-	cur.execute("SELECT id FROM users WHERE nick = %s", (user.lower(),))
+	cur.execute("SELECT id FROM users WHERE name = %s", (user.lower(),))
 	user_id = cur.fetchone()
 	if not user_id:
 		return {"favorite": False}
@@ -196,10 +198,10 @@ def add_favorite(user, hash, cur=None):
 		int(hash, 16)  # validate hex
 		song = search_by_hash(cur, hash)
 	song_id = song['id']
-	cur.execute("SELECT id FROM users WHERE nick = %s", (user.lower(),))
+	cur.execute("SELECT id FROM users WHERE name = %s", (user.lower(),))
 	user_id = cur.fetchone()
 	if not user_id:
-		cur.execute("INSERT INTO users (nick) VALUES (%s) RETURNING id", (user.lower(),))
+		cur.execute("INSERT INTO users (name) VALUES (%s) RETURNING id", (user.lower(),))
 		user_id = cur.fetchone()
 	try:
 		cur.execute("""INSERT INTO favorites
@@ -222,7 +224,7 @@ def remove_favorite(user, hash, cur=None):
 		int(hash, 16)  # validate hex
 		song = search_by_hash(cur, hash)
 	song_id = song['id']
-	cur.execute("SELECT id FROM users WHERE nick = %s", (user.lower(),))
+	cur.execute("SELECT id FROM users WHERE name = %s", (user.lower(),))
 	user_id = cur.fetchone()
 	if not user_id:
 		return flask.Response(status=400)
