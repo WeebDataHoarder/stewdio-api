@@ -19,7 +19,7 @@ FROM songs
 JOIN artists ON songs.artist = artists.id
 JOIN albums ON songs.album = albums.id
 LEFT JOIN favorites ON songs.id = favorites.song
-LEFT JOIN users ON favorites.account = users.id
+LEFT JOIN users ON favorites.user_id = users.id
 LEFT JOIN taggings ON songs.id = taggings.song
 LEFT JOIN tags ON taggings.tag = tags.id
 {where}

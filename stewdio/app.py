@@ -184,7 +184,7 @@ def check_favorite(user, hash, cur=None):
 	if not user_id:
 		return {"favorite": False}
 	cur.execute("""SELECT COUNT(*) FROM favorites WHERE
-		account = %s AND song = %s""", (user_id[0], song_id))
+		user_id = %s AND song = %s""", (user_id[0], song_id))
 	return {"favorite": cur.fetchone()[0] > 0}
 
 @app.route("/api/favorites/<user>/<hash>", methods=["PUT"])
@@ -205,7 +205,7 @@ def add_favorite(user, hash, cur=None):
 		user_id = cur.fetchone()
 	try:
 		cur.execute("""INSERT INTO favorites
-			(account, song) VALUES (%s, %s)""", (user_id[0], song_id))
+			(user_id, song) VALUES (%s, %s)""", (user_id[0], song_id))
 
 		pubsub.events.favorite(dict(action='add', song=song, user=user))
 	except psycopg2.IntegrityError as e:
@@ -229,7 +229,7 @@ def remove_favorite(user, hash, cur=None):
 	if not user_id:
 		return flask.Response(status=400)
 	cur.execute("""DELETE FROM favorites
-			WHERE account = %s AND song = %s;""", (user_id[0], song_id))
+			WHERE user_id = %s AND song = %s;""", (user_id[0], song_id))
 
 	pubsub.events.favorite(dict(action='remove', song=song, user=user))
 	return flask.Response(status=200)
