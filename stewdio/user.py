@@ -111,3 +111,14 @@ def delete_api_key(key_id, user, session):
 		return {"error": "invalid key"}, 400
 	session.delete(key)
 	return {"status": "api key removed", "key": key.json()}, 200
+
+
+if __name__ == '__main__':
+	import sys
+	from . import config
+	session = config.db.create_session()
+	user = session.query(User).filter_by(name=sys.argv[1]).one()
+	password = token_urlsafe(32)
+	user.password = crypt(password)
+	print(f"Reset password for {user.name} to: {password}")
+	session.commit()
