@@ -17,18 +17,44 @@ api = flask.Blueprint("user", "user", url_prefix="/api/user")
 
 def requires_auth(fn):
 	@wraps(fn)
-	def decorated(*args, session, **kwargs):
+	def wrapper(*args, session, **kwargs):
 		auth = flask.request.authorization
 		user = session.query(User).filter_by(name=auth.username).one_or_none() if auth else None
 		if not user or crypt(auth.password, user.password) != user.password:
 			return flask.Response(
 				json.dumps({"error": "authentication required"}),
 				status=401,
-				headers={'WWW-Authenticate': 'Basic realm="Login Required"'}
+				headers={'WWW-Authenticate': 'Basic realm="Authentication Required"'}
 			)
 		return fn(*args, user=user, session=session, **kwargs)
 
-	return decorated
+	return wrapper
+
+
+def find_user_by_api_key(session, request):
+	key = request.args.get("apikey")
+	auth = request.authorization
+	if not key and auth:
+		key = auth.username if not auth.password else auth.password
+	if not key and "authorization" in request.headers:
+		key = request.headers["authorization"]
+	key = session.query(UserApiKey).filter_by(key=key).one_or_none()
+	return key.user if key else None
+
+
+def requires_api_key(fn):
+	@wraps(fn)
+	def wrapper(*args, session, **kwargs):
+		key = find_user_by_api_key(session, flask.request)
+		if not key:
+			return flask.Response(
+				json.dumps({"error": "authentication required"}),
+				status=401,
+				headers={'WWW-Authenticate': 'Basic realm="Authentication Required"'}
+			)
+		return fn(*args, user=key.user, session=session, **kwargs)
+
+	return wrapper
 
 
 @api.route("/create", methods=["POST"])

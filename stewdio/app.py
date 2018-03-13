@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import random
+from functools import wraps
 from urllib.parse import urlsplit, parse_qs
 
 import flask
@@ -13,17 +14,18 @@ from geventwebsocket.websocket import WebSocket
 
 from . import config
 from . import library
-from . import tagging
-from .misc import json_api, with_pg_cursor, with_db_session
 from . import pubsub
+from . import tagging
+from . import types
+from .misc import json_api, with_pg_cursor, with_db_session
 from .search import search as search_internal, search_by_hash, search_favorites, get_random
-from . import user
+from .user import api as user_api, find_user_by_api_key
 
 L = logging.getLogger("stewdio.app")
 
 app = flask.Flask(__name__)
 app.register_blueprint(tagging.api)
-app.register_blueprint(user.api)
+app.register_blueprint(user_api)
 websocket = Sockets(app)
 
 def kawa(api_function_name):
@@ -32,6 +34,23 @@ def kawa(api_function_name):
 @app.before_request
 def request_logger():
 	L.info("Request: {}".format(flask.request.path))
+
+def requires_api_key_if_user_has_password(fn):
+	@wraps(fn)
+	@with_db_session
+	def wrapper(*args, user, session, **kwargs):
+		db_user = find_user_by_api_key(session, flask.request)
+		if not db_user:
+			db_user = session.query(types.User).filter_by(name=user.lower()).one_or_none()
+			if db_user and db_user.password:
+				return flask.Response(
+					json.dumps({"error": "authentication required"}),
+					status=401,
+					headers={'WWW-Authenticate': 'Basic realm="Authentication Required"'}
+				)
+		return fn(*args, user=user, **kwargs)
+
+	return wrapper
 
 @app.route("/")
 def index():
@@ -189,6 +208,7 @@ def check_favorite(user, hash, cur=None):
 
 @app.route("/api/favorites/<user>/<hash>", methods=["PUT"])
 @with_pg_cursor
+@requires_api_key_if_user_has_password
 def add_favorite(user, hash, cur=None):
 	if hash == "playing":
 		song = np
@@ -215,6 +235,7 @@ def add_favorite(user, hash, cur=None):
 
 @app.route("/api/favorites/<user>/<hash>", methods=["DELETE"])
 @with_pg_cursor
+@requires_api_key_if_user_has_password
 def remove_favorite(user, hash, cur=None):
 	if hash == "playing":
 		song = np
