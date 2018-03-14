@@ -61,12 +61,13 @@ def requires_api_key(fn):
 @json_api
 @with_db_session
 def create(session):
-	j = flask.request.get_json(force=True)
-	name, password = j['name'], j['password']
-	user = session.query(User).filter_by(name=name).one_or_none()
+	auth = flask.request.authorization
+	if not auth:
+		return {"error": "missing user information"}, 400
+	user = session.query(User).filter_by(name=auth.username).one_or_none()
 	if user:
 		return {"error": "user exists"}, 409
-	user = User(name=name, password=crypt(password))
+	user = User(name=auth.username, password=crypt(auth.password))
 	session.add(user)
 	return {"status": "user created"}, 201
 
