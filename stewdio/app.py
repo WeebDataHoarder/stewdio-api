@@ -40,7 +40,7 @@ def requires_api_key_if_user_has_password(fn):
 	@with_db_session
 	def wrapper(*args, user, session, **kwargs):
 		db_user = find_user_by_api_key(session, flask.request)
-		if not db_user:
+		if not db_user or db_user.name != user:
 			db_user = session.query(types.User).filter_by(name=user.lower()).one_or_none()
 			if db_user and db_user.password:
 				return flask.Response(
