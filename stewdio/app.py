@@ -307,7 +307,7 @@ def ws_connect(ws: WebSocket):
 def ws_connect(ws: WebSocket):
 	ws.send(json.dumps(dict(type='playing', data=np)))
 	ws.send(json.dumps(dict(type='listeners', data=_listeners())))
-	ws.send(json.dumps(dict(type='queue', data=_get_queue())))
+	ws.send(json.dumps(dict(type='queue', data=dict(action="initial", queue=_get_queue()))))
 	pubsub.events.register_client(ws)
 
 try:
@@ -328,5 +328,6 @@ def update_playing(cur):
 	np = flask.request.get_json(force=True)
 	cur.execute("""INSERT INTO history (data) VALUES (%s)""", (np,))
 	pubsub.playing.publish(np)
+	pubsub.events.queue(dict(action='remove', song=np))
 	pubsub.events.playing(np)
 	return ""
