@@ -255,10 +255,13 @@ def remove_favorite(user, hash, cur=None):
 	pubsub.events.favorite(dict(action='remove', song=song, user=user))
 	return flask.Response(status=200)
 
+def _get_queue():
+	return requests.get(kawa('queue')).json()
+
 @app.route("/api/queue")
 @json_api
 def get_queue():
-	return requests.get(kawa('queue')).json()
+	return _get_queue()
 
 @app.route("/api/info/<hash>")
 @with_pg_cursor
@@ -303,6 +306,8 @@ def ws_connect(ws: WebSocket):
 @websocket.route("/api/events/all")
 def ws_connect(ws: WebSocket):
 	ws.send(json.dumps(dict(type='playing', data=np)))
+	ws.send(json.dumps(dict(type='listeners', data=_listeners())))
+	ws.send(json.dumps(dict(type='queue', data=_get_queue())))
 	pubsub.events.register_client(ws)
 
 try:

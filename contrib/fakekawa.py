@@ -100,6 +100,27 @@ def listeners():
   }
 ])
 
+@app.route('/queue')
+def queue():
+    return json.dumps(
+[
+  {
+    "album": "test",
+    "artist": "test",
+    "duration": 60,
+    "favored_by": [
+      "minus"
+    ],
+    "hash": "00000000000000000000000000000000",
+    "id": 123,
+    "path": "/tmp/test.flac",
+    "status": "active",
+    "tags": ["test"],
+    "title": "test"
+  }
+])
+
+
 @app.route('/<path:path>', methods=['GET', 'POST', 'DELETE', 'PUT'])
 def asdf(path):
     return ""
