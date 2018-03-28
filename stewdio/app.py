@@ -52,10 +52,6 @@ def requires_api_key_if_user_has_password(fn):
 
 	return wrapper
 
-@app.route("/")
-def index():
-	return flask.render_template("index.html")
-
 @app.route("/api/search/<q>")
 @with_pg_cursor
 @json_api
