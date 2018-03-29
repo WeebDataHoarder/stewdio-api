@@ -5,6 +5,8 @@ from functools import partial
 from pathlib import Path
 from typing import NamedTuple
 
+import acoustid
+from acoustid import WebServiceError
 from tinytag import TinyTag
 
 from stewdio.types.song import SongStatus
@@ -28,14 +30,28 @@ def compute_hash(file):
 	return h.hexdigest()
 
 
+def augment_with_musicbrainz_metadata(song):
+	meta = 'recordings releases'
+	try:
+		data = acoustid.match(config.acoustid_api_key, song.path, meta=meta, parse=False)
+		if data.get('status') != 'ok':
+			raise WebServiceError("status not ok")
+		if not isinstance(data.get('results'), list):
+			raise WebServiceError("invalid results")
+		song.mb_metadata = data['results']
+		L.debug(f"Augmented {song} with MusicBrainz metadata")
+	except WebServiceError as e:
+		L.exception("Failed to fetch MusicBrainz metadata")
+
+
 def update(session, scan_dir):
 	songs = []
 	scan_dir = Path(scan_dir)
 	L.info(f"Scanning directory {scan_dir} for new files")
 	for root, dirs, files in os.walk(scan_dir):
 		root = Path(root)
-		for file in sorted(files):
-			path = root / file
+		for path in sorted(files):
+			path = root / path
 			path = path.absolute()
 			if path.suffix not in ('.flac', '.mp3', '.aac', '.opus', '.ogg'):
 				continue
@@ -43,6 +59,8 @@ def update(session, scan_dir):
 			hash = compute_hash(path)
 			song = session.query(Song).filter_by(hash=hash).one_or_none()
 			if song:
+				if not song.mb_metadata:
+					augment_with_musicbrainz_metadata(song)
 				L.info(f"Song {song} (path: {song.path}) already exists in database (new path: {path}), skipping")
 				continue
 			metadata = TinyTag.get(str(path))
@@ -65,6 +83,7 @@ def update(session, scan_dir):
 				artist=artist,
 				album=album,
 			)
+			augment_with_musicbrainz_metadata(song)
 			session.add(song)
 			session.flush()
 			L.info(f"Added song {song}")

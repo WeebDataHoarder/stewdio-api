@@ -42,3 +42,7 @@ if off_vocal_regex:
 
 cfg_storage_status: configparser.SectionProxy = config['storage-status']
 storage_status = dict(cfg_storage_status)
+
+
+cfg_acoustid: configparser.SectionProxy = config['acoustid']
+acoustid_api_key = cfg_acoustid.get('api-key')

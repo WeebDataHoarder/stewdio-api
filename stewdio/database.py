@@ -33,3 +33,8 @@ class Database:
         Base.query = session.query_property()
 
         return session
+
+if __name__ == '__main__':
+    from .config import db
+    from .types import *
+    session = db.create_session()

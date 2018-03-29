@@ -46,6 +46,8 @@ class Song(Base):
             collection_class=set,
             back_populates="songs")
 
+    mb_metadata = sa.Column(sa.JSON)
+
     def json(self):
         return dict(
             **{attr: getattr(self, attr)
