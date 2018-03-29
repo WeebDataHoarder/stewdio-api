@@ -3,7 +3,7 @@
 _gitname=stewdio-api
 pkgname="${_gitname}-git"
 _gitbranch=master
-pkgver=1.0.0.r23.g5582bc6
+pkgver=1.0.0.r30.gb67e0b8
 pkgrel=1
 pkgdesc="Stewdio web radio core API server"
 url="https://git.sr.ht/~minus/${_gitname}"
@@ -14,6 +14,7 @@ arch=('any')
 depends=(
   'gunicorn'
   'python'
+  'python-pyacoustid'
   'python-flask'
   'python-flask-sockets'
   'python-gevent'
