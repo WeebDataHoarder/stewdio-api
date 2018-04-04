@@ -36,6 +36,12 @@ QUALIFIERS = {
 # when no qualifier is given, look at all those
 UNQUALIFIERS = ('title', 'artist', 'tag')
 
+QUICK = {
+    '#': 'tag',
+    '/': 'album',
+    '@': 'fav',
+}
+
 
 class String:
     def __init__(self, value):

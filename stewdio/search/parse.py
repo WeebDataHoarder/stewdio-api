@@ -8,9 +8,10 @@ EBNF:
 
 query = ( combination | inverted_query | subquery | elemental_query ) ;
 
-elemental_query = ( qualified | unqualified ) ;
+elemental_query = ( qualified | unqualified | quick ) ;
 qualified = WORD , ( COLON | EQUALS ) , string ;
 unqualified = string ;
+quick = QUICK , string ;
 
 combination = query , [ ( AND | OR ) ] , query ;
 
@@ -27,13 +28,14 @@ lg = LexerGenerator()
 lg.add('AND', r'AND')
 lg.add('OR', r'OR')
 lg.add('NOT', r'NOT')
-lg.add('WORD', r'[^:"\'()\s=-][^:)\s=]*')
+lg.add('WORD', r'[^:"\'()\s=\-#@|][^:)\s=]*')
 lg.add('STRING', r'"[^"]*"|\'[^\']*\'')
 lg.add('MINUS', r'-')
 lg.add('LPAREN', r'\(')
 lg.add('RPAREN', r'\)')
 lg.add('COLON', r':')
 lg.add('EQUALS', r'=')
+lg.add('QUICK', r'[#|@]')
 
 lg.ignore(r'\s+')
 
@@ -58,6 +60,7 @@ def main(p):
 @pg.production('query : elemental_query')
 @pg.production('elemental_query : qualified')
 @pg.production('elemental_query : unqualified')
+@pg.production('elemental_query : quick')
 @pg.production('not : NOT')
 @pg.production('not : MINUS')
 def alias(p):
@@ -87,6 +90,13 @@ def qualified(p):
 @pg.production('unqualified : string')
 def unqualified(p):
     return Unqualified(p[0])
+
+
+@pg.production('quick : QUICK string')
+def quick(p):
+    assert p[0].value in QUICK
+    qualifier_name = QUICK[p[0].value]
+    return Qualified(qualifier_name, p[1])
 
 
 @pg.production('inverted_query : not query', precedence='NOT')
@@ -137,7 +147,7 @@ def parse(q):
 
 if __name__ == '__main__':
     q = """
-(artist:mizuki OR artist:水樹) AND NOT fav:minus AND album:'supernal liberty' OR million
+(artist:mizuki OR artist:水樹) AND NOT fav:minus AND album:'supernal liberty' OR million AND #op
 """
     tokens = list(lexer.lex(q))
     #for t in tokens:

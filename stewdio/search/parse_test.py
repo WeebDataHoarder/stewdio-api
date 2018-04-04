@@ -22,6 +22,7 @@ cases = (
     ('''path:"comet lucifer" -inst''', And(Qualified('path', String('comet lucifer')), Not(Unqualified(String('inst')))), None),
     ('''(fav:minus OR fav:nyc OR fav:jdiez) NOT fav:sircmpwn''', And(Or(Or(Qualified('fav', String('minus')), Qualified('fav', String('nyc'))), Qualified('fav', String('jdiez'))), Not(Qualified('fav', String('sircmpwn')))), Composed([SQL('('), SQL('('), SQL('('), SQL('ARRAY[lower('), Literal('minus'), SQL(')] <@ '), SQL('array_agg(users.name)'), SQL(' OR '), SQL('ARRAY[lower('), Literal('nyc'), SQL(')] <@ '), SQL('array_agg(users.name)'), SQL(')'), SQL(' OR '), SQL('ARRAY[lower('), Literal('jdiez'), SQL(')] <@ '), SQL('array_agg(users.name)'), SQL(')'), SQL(' AND '), SQL('NOT '), SQL('ARRAY[lower('), Literal('sircmpwn'), SQL(')] <@ '), SQL('array_agg(users.name)'), SQL(')')])),
     ('''title="why?"''', Qualified('title', String('why?'), op=Ops.EQUALS), None),
+    ('''#op @minus''', And(Qualified('tag', String('op')), Qualified('fav', String('minus'))), None),
 )
 
 @pytest.mark.parametrize('input,expected_ast,expected_sql', cases)
@@ -30,6 +31,6 @@ def test_parse(input, expected_ast, expected_sql):
         parsed = parse(input)
     except Exception as e:
         parsed = e.__class__, *e.args
-    assert parsed == expected_ast
+    assert expected_ast == parsed
     if expected_sql is not None:
         assert parsed.build() == expected_sql
