@@ -35,7 +35,7 @@ lg.add('LPAREN', r'\(')
 lg.add('RPAREN', r'\)')
 lg.add('COLON', r':')
 lg.add('EQUALS', r'=')
-lg.add('QUICK', r'[#|@]')
+lg.add('QUICK', r'[#@/]')
 
 lg.ignore(r'\s+')
 
