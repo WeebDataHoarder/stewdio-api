@@ -259,6 +259,16 @@ def _get_queue():
 def get_queue():
 	return _get_queue()
 
+@app.route("/api/history")
+@with_db_session
+@json_api
+def history(session):
+	n = min(int(flask.request.args.get('n', 10)), 100)
+	q = (session.query(types.History)
+	     .order_by(types.History.play_time.desc())
+	     .limit(n))
+	return [h.data for h in q]
+
 @app.route("/api/info/<hash>")
 @with_pg_cursor
 @json_api
