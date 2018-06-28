@@ -64,6 +64,8 @@ def update(session, scan_dir):
 					augment_with_musicbrainz_metadata(song)
 				L.info(f"Song {song} (path: {song.path}) already exists in database (new path: {path}), skipping")
 				continue
+			if session.query(Song).filter_by(path=str(path)).exists():
+				raise RuntimeError(f"File {path} found in database but hash mismatches, aborting")
 			metadata = TinyTag.get(str(path))
 			if not metadata.artist:
 				metadata.artist = metadata.albumartist
@@ -110,12 +112,13 @@ if __name__ == '__main__':
 			update(session, path)
 			session.commit()
 	elif args.command == 'replace':
-		old = session.query(Song).filter(Song.path.startswith(str(args.old))).all()
-		new = update(session, args.new)
+		old = (session.query(Song)
+			.filter(Song.path.startswith(str(args.old))).all())
+		new = (session.query(Song)
+			.filter_by(status=SongStatus.active)
+			.filter(Song.path.startswith(str(args.new))).all())
 		old.sort(key=attrgetter('path'))
 		new.sort(key=attrgetter('path'))
-		if len(old) != len(new):
-			p.exit(status=-1, message="Different number of files, cannot replace")
 		for old_song, new_song in zip(old, new):
 			print("old:", old_song.path)
 			print("new:", new_song.path)
@@ -123,6 +126,8 @@ if __name__ == '__main__':
 			old_song.favored_by.clear()
 			old_song.status = SongStatus.removed
 			print("---")
+		if len(old) != len(new):
+			p.exit(status=-1, message="Different number of files, cannot replace")
 		if input("Replace songs? (y/n) ") != 'y':
 			p.exit()
 		session.commit()
