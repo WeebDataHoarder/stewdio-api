@@ -2,6 +2,7 @@ import hashlib
 import logging
 import os
 from functools import partial
+from operator import attrgetter
 from pathlib import Path
 from typing import NamedTuple
 
@@ -87,13 +88,41 @@ def update(session, scan_dir):
 			session.add(song)
 			session.flush()
 			L.info(f"Added song {song}")
-			songs.append(song.json())
+			songs.append(song)
 	return songs
 
 
 if __name__ == '__main__':
-	import sys
+	import argparse
+	p = argparse.ArgumentParser()
+	sp = p.add_subparsers(dest='command')
+	addp = sp.add_parser('add')
+	addp.add_argument('dirs', nargs='+', type=Path)
+	replacep = sp.add_parser('replace')
+	replacep.add_argument('old', type=Path)
+	replacep.add_argument('new', type=Path)
+	args = p.parse_args()
 	session = config.db.create_session()
-	for path in sys.argv[1:]:
-		update(session, path)
+	if not args.command:
+		p.error("No command specified")
+	elif args.command == 'add':
+		for path in args.dirs:
+			update(session, path)
+			session.commit()
+	elif args.command == 'replace':
+		old = session.query(Song).filter(Song.path.startswith(str(args.old))).all()
+		new = update(session, args.new)
+		old.sort(key=attrgetter('path'))
+		new.sort(key=attrgetter('path'))
+		if len(old) != len(new):
+			p.exit(status=-1, message="Different number of files, cannot replace")
+		for old_song, new_song in zip(old, new):
+			print("old:", old_song.path)
+			print("new:", new_song.path)
+			new_song.favored_by.update(old_song.favored_by)
+			old_song.favored_by.clear()
+			old_song.status = SongStatus.removed
+			print("---")
+		if input("Replace songs? (y/n) ") != 'y':
+			p.exit()
 		session.commit()

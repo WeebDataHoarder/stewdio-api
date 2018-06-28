@@ -325,7 +325,7 @@ except:
 @with_db_session
 @json_api
 def update_index(session):
-	return library.update(session, flask.request.args.get("path"))
+	return [song.json() for song in library.update(session, flask.request.args.get("path"))]
 
 @app.route("/admin/playing", methods=["POST"])
 @with_pg_cursor
