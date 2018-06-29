@@ -64,7 +64,7 @@ def update(session, scan_dir):
 					augment_with_musicbrainz_metadata(song)
 				L.info(f"Song {song} (path: {song.path}) already exists in database (new path: {path}), skipping")
 				continue
-			if session.query(Song).filter_by(path=str(path)).exists():
+			if session.query(Song).filter_by(path=str(path)).count() > 0:
 				raise RuntimeError(f"File {path} found in database but hash mismatches, aborting")
 			metadata = TinyTag.get(str(path))
 			if not metadata.artist:
@@ -123,6 +123,7 @@ if __name__ == '__main__':
 			print("old:", old_song.path)
 			print("new:", new_song.path)
 			new_song.favored_by.update(old_song.favored_by)
+			new_song.tags.update(old_song.tags)
 			old_song.favored_by.clear()
 			old_song.status = SongStatus.removed
 			print("---")
