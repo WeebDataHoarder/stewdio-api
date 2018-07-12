@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import random
+from datetime import datetime, timezone
 from functools import wraps
 from urllib.parse import urlsplit, parse_qs
 
@@ -348,6 +349,7 @@ def update_playing(cur):
 	global np
 	np = flask.request.get_json(force=True)
 	cur.execute("""INSERT INTO history (data) VALUES (%s)""", (np,))
+	np['started'] = datetime.now(timezone.utc).timestamp()
 	pubsub.playing.publish(np)
 	pubsub.events.queue(dict(action='remove', song=np))
 	pubsub.events.playing(np)
