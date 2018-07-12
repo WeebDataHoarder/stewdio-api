@@ -11,6 +11,7 @@ import psycopg2.extras
 import requests
 from flask_sockets import Sockets
 from geventwebsocket.websocket import WebSocket
+from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
 
 from . import config
 from . import library
@@ -326,6 +327,20 @@ except:
 @json_api
 def update_index(session):
 	return [song.json() for song in library.update(session, flask.request.args.get("path"))]
+
+@app.route("/admin/library/unlist", methods=["POST"])
+@with_db_session
+@json_api
+def unlist(session):
+	hash = flask.request.args.get("hash") or np['hash']
+	try:
+		s = session.query(types.Song).filter(types.Song.hash.startswith(hash)).one()
+		s.stats = types.SongStatus.unlisted
+		return s.json()
+	except MultipleResultsFound as e:
+		return {"error": "multiple matches"}, 400
+	except NoResultFound as e:
+		return {"error": "no matches"}, 400
 
 @app.route("/admin/playing", methods=["POST"])
 @with_pg_cursor
