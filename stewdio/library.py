@@ -103,6 +103,12 @@ if __name__ == '__main__':
 	replacep = sp.add_parser('replace')
 	replacep.add_argument('old', type=Path)
 	replacep.add_argument('new', type=Path)
+	movep = sp.add_parser('move',
+		help="Move files from one directory to another " +
+		"(in the database only, not in the file system) " +
+		"and set status to active")
+	movep.add_argument('old', type=Path)
+	movep.add_argument('new', type=Path)
 	args = p.parse_args()
 	session = config.db.create_session()
 	if not args.command:
@@ -132,3 +138,17 @@ if __name__ == '__main__':
 		if input("Replace songs? (y/n) ") != 'y':
 			p.exit()
 		session.commit()
+	elif args.command == 'move':
+		old = (session.query(Song)
+			.filter(Song.path.startswith(str(args.old))).all())
+		for song in old:
+			new_path = args.new / Path(song.path).relative_to(args.old)
+			print("old (", song.status, "):", song.path)
+			print("new:", new_path)
+			song.path = str(new_path)
+			song.status = SongStatus.active
+			print("---")
+		if input("Move songs? (y/n) ") != 'y':
+			p.exit()
+		session.commit()
+
