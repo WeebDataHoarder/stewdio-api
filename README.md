@@ -5,15 +5,30 @@ Stewdio API is the central piece of the Stewdio Radio System (SRS). It provides 
 
 ## Setup
 
-Install, configure in /etc/stewdio/api.conf, initialize database with alembic, run.
+- Install the package (buildable via ArchLinux PKGBUILD in contrib) or via
+  `python setup.py install` (not recommended unless in a venv)
+- Set database connection information and other configuration in
+  `stewdio-api.conf` and/or copy it to `/etc/stewdio/api.conf`
+- Set the database connection information in `alembic.ini`
+- Initialize the database:
+  ```
+  $ python contrib/init_db.py
+  $ alembic stamp head
+  ```
+- Run `run.sh` to start stewdio-api. Kawa should be running already,
+  otherwise stewdio-api will spit out errors
+
+### Upgrading the database
+`alembic upgrade head`
 
 
+## API
 
-## Restricted API endpoints
+### Restricted API endpoints
 Some restricted API endpoints require an account. Currently, that only includes adding and removing favorites for a user that has a password set.
 
 
-### Setting a password on users without password
+#### Setting a password on users without password
 If a user was created without a password, a password can only be set using CLI interface. This will generate a random password that can be reset using the *user update* endpoint.
 
 ```sh
@@ -21,7 +36,7 @@ python -m stewdio.user <username>
 ```
 
 
-### Creating a user
+#### Creating a user
 If no user exists yet, it can be created via the `/api/user/creatwe` endpoint:
 
 ```sh
@@ -29,11 +44,11 @@ curl 'http://localhost:5000/api/user/create' --user minus:asdf -XPOST -s | jq
 ```
 
 
-### Authenticating to user management endpoints
+#### Authenticating to user management endpoints
 Endpoints under `/api/user` require authenticating with [HTTP Basic Authentication](https://en.wikipedia.org/wiki/Basic_access_authentication), i.e. username and password must be sent in the `Authorization` header.
 
 
-### Changing a user password
+#### Changing a user password
 To change a user's password, send a request with the new password to the `/api/user/update` endpoint:
 
 ```sh
@@ -41,7 +56,7 @@ curl 'http://localhost:5000/api/user/create' --user minus:asdf -d '{"password":"
 ```
 
 
-### Creating API keys
+#### Creating API keys
 Some endpoints require an API key. One can be created using the `/api/user/apikeys/create` endpoint by supplying a name for the key (purely informational). The response will contain the API key in the `key` field in the object in the `key` field. This key is just shown once.
 
 ```sh
@@ -49,7 +64,7 @@ curl 'http://localhost:5000/api/user/apikeys/create' --user minus:asdf -d '{"nam
 ```
 
 
-### Authenticating to other endpoints
+#### Authenticating to other endpoints
 Some endpoints, like adding and removing favorites, require an API key to be supplied. The user/password credentials are not accepted. The API key can either be passed via a GET parameter `apikey`, or in the `Authorization` header as *Basic authentication*. Adding the current song to favorites looks as follows:
 
 ```sh
