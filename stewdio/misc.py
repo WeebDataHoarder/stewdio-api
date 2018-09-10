@@ -1,3 +1,5 @@
+from contextlib import contextmanager
+
 from . import config
 
 import json
@@ -57,14 +59,19 @@ def with_db_session(fn):
 	def wrapper(*args, **kwargs):
 		if "session" in kwargs:
 			raise RuntimeError("A session argument already exists!")
-		s = kwargs["session"] = config.db.create_session()
-		try:
-			ret = fn(*args, **kwargs)
-			s.commit()
-			return ret
-		except:
-			s.rollback()
-			raise
-		finally:
-			s.close()
+		with db_session() as s:
+			kwargs["session"] = s
+			return fn(*args, **kwargs)
 	return wrapper
+
+@contextmanager
+def db_session():
+	session = config.db.create_session()
+	try:
+		yield session
+		session.commit()
+	except:
+		session.rollback()
+		raise
+	finally:
+		session.close()

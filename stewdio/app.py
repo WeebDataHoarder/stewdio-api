@@ -2,14 +2,13 @@ import json
 import logging
 import os
 import random
-from datetime import datetime, timezone
 from functools import wraps
 from urllib.parse import urlsplit, parse_qs
 
 import flask
 import gevent
-import psycopg2.extras
 import requests
+import sqlalchemy as sa
 from flask_sockets import Sockets
 from geventwebsocket.websocket import WebSocket
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
@@ -19,8 +18,8 @@ from . import library
 from . import pubsub
 from . import tagging
 from . import types
-from .misc import json_api, with_pg_cursor, with_db_session
-from .search import search as search_internal, search_by_hash, search_favorites, get_random
+from .misc import json_api, with_pg_cursor, with_db_session, db_session
+from .search import search as search_internal, get_random
 from .user import api as user_api, find_user_by_api_key
 
 L = logging.getLogger("stewdio.app")
@@ -39,7 +38,6 @@ def request_logger():
 
 def requires_api_key_if_user_has_password(fn):
 	@wraps(fn)
-	@with_db_session
 	def wrapper(*args, user, session, **kwargs):
 		db_user = find_user_by_api_key(session, flask.request)
 		if not db_user or db_user.name != user:
@@ -75,27 +73,29 @@ def get_random_song(cur):
 
 def queue_song(song):
 	L.info("Song {} requested".format(song["hash"]))
-	requests.post(kawa('queue/tail'), json=song)
-	pubsub.events.queue(dict(action='add', song=song))
+	resp = requests.post(kawa('queue/tail'), json=song)
+	queue_id = resp.json().get('queue_id')
+	pubsub.events.queue(dict(action='add', song=song, queue_id=queue_id))
 	return song
 
 @app.route("/api/request/<hash>")
-@with_pg_cursor
+@with_db_session
 @json_api
-def request(hash, cur):
-	song = search_by_hash(cur, hash)
-	return queue_song(song)
+def request(hash, session):
+	song = session.query(types.Song).filter(types.Song.hash.startswith(hash)).one()
+	return queue_song(song.json())
 
 @app.route("/api/request/favorite/<user>")
-@with_pg_cursor
+@with_db_session
 @json_api
-def request_favorite(cur, user, num=1):
+def request_favorite(sesion, user, num=1):
 	if "num" in flask.request.args:
 		num = int(flask.request.args["num"])
-	favs = search_favorites(cur, user)
-	random.shuffle(favs)
-	favs = favs[:num]
-	ret = [queue_song(song) for song in favs]
+	favs = (sesion.query(types.User.favorites)
+			.filter(types.User.name == user)
+			.order_by(sa.func.random())
+			.limit(num).all())
+	ret = [queue_song(song.json()) for song in favs]
 	return ret
 
 @app.route("/api/request/random/<terms>")
@@ -111,32 +111,34 @@ def request_random(terms, cur):
 @app.route("/api/skip")
 def skip():
 	song = requests.post(kawa('skip')).json()
-	pubsub.events.queue(dict(action='remove', song=song))
+	queue_id = song.get('queue_id')
+	pubsub.events.queue(dict(action='remove', song=song, queue_id=queue_id))
 	return ""
 
 @app.route("/api/queue/head", methods=['DELETE'])
 def queue_remove_head():
 	song = requests.delete(kawa('queue/head')).json()
-	pubsub.events.queue(dict(action='remove', song=song))
+	queue_id = song.get('queue_id')
+	pubsub.events.queue(dict(action='remove', song=song, queue_id=queue_id))
 	return ""
 
 @app.route("/api/queue/tail", methods=['DELETE'])
 def queue_remove_tail():
 	song = requests.delete(kawa('queue/tail')).json()
-	pubsub.events.queue(dict(action='remove', song=song))
+	queue_id = song.get('queue_id')
+	pubsub.events.queue(dict(action='remove', song=song, queue_id=queue_id))
 	return ""
 
 @app.route("/api/download/<hash>")
-@with_pg_cursor
-def download(hash, cur):
-	song = search_by_hash(cur, hash)
+@with_db_session
+def download(hash, session):
+	song = session.query(types.Song.hash.startswith(hash)).one_or_none()
 	if not song:
 		return flask.Response(status=404)
-	path = song["path"]
-	att_fn = os.path.basename(path).encode('ascii', errors='replace').decode('ascii').replace('?', '_')
-	if not os.path.exists(path):
+	att_fn = os.path.basename(song.path).encode('ascii', errors='replace').decode('ascii').replace('?', '_')
+	if not os.path.exists(song.path):
 		return flask.Response(status=404)
-	return flask.send_file(path, as_attachment=True, attachment_filename=att_fn)
+	return flask.send_file(song.path, as_attachment=True, attachment_filename=att_fn)
 
 def _listeners():
 	r = requests.get(kawa('listeners'))
@@ -174,83 +176,64 @@ def listeners_updater():
 gevent.spawn(listeners_updater)
 
 @app.route("/api/playing")
+@with_db_session
 @json_api
-def playing():
-	return np
+def playing(session):
+	return get_np(session)
 
 @app.route("/api/favorites/<user>")
-@with_pg_cursor
+@with_db_session
 @json_api
-def favorites(user, cur):
-	return search_favorites(cur, user)
+def favorites(user, session):
+	return [f.json() for f in session.query(types.User)
+		.filter_by(name=user).one().favorites]
 
 @app.route("/api/favorites/<user>/<hash>", methods=["GET"])
 @json_api
-@with_pg_cursor
-def check_favorite(user, hash, cur=None):
+@with_db_session
+def check_favorite(user, hash, session):
 	if hash == "playing":
-		song = np
+		song = get_np(session)
 		if not song:
 			return flask.Response(status=500)
 	else:
 		int(hash, 16)  # validate hex
-		song = search_by_hash(cur, hash)
-	song_id = song['id']
-	cur.execute("SELECT id FROM users WHERE name = %s", (user.lower(),))
-	user_id = cur.fetchone()
-	if not user_id:
-		return {"favorite": False}
-	cur.execute("""SELECT COUNT(*) FROM favorites WHERE
-		user_id = %s AND song = %s""", (user_id[0], song_id))
-	return {"favorite": cur.fetchone()[0] > 0}
+		song = session.query(types.Song.hash.startswith(hash)).one()
+	user = session.query(types.User).filter_by(name=user).one_or_none()
+	fav = user and user in song.favored_by
+	return {"favorite": fav}
 
 @app.route("/api/favorites/<user>/<hash>", methods=["PUT"])
-@with_pg_cursor
+@with_db_session
 @requires_api_key_if_user_has_password
-def add_favorite(user, hash, cur=None):
+def add_favorite(user, hash, session):
 	if hash == "playing":
-		song = np
+		song = get_np(session)
 		if not song:
 			return flask.Response(status=500)
 	else:
 		int(hash, 16)  # validate hex
-		song = search_by_hash(cur, hash)
-	song_id = song['id']
-	cur.execute("SELECT id FROM users WHERE name = %s", (user.lower(),))
-	user_id = cur.fetchone()
-	if not user_id:
-		cur.execute("INSERT INTO users (name) VALUES (%s) RETURNING id", (user.lower(),))
-		user_id = cur.fetchone()
-	try:
-		cur.execute("""INSERT INTO favorites
-			(user_id, song) VALUES (%s, %s)""", (user_id[0], song_id))
-
-		pubsub.events.favorite(dict(action='add', song=song, user=user))
-	except psycopg2.IntegrityError as e:
-		return flask.Response(status=200)
-	else:
-		return flask.Response(status=201)
+		song = session.query(types.Song.hash.startswith(hash)).one()
+	user = session.query(types.User).filter_by(name=user).one()
+	was_faved = user not in song.favored_by
+	song.favored_by.add(user)
+	pubsub.events.favorite(dict(action='add', song=song.json(), user=user.name))
+	return flask.Response(status=200 if was_faved else 201)
 
 @app.route("/api/favorites/<user>/<hash>", methods=["DELETE"])
-@with_pg_cursor
+@with_db_session
 @requires_api_key_if_user_has_password
-def remove_favorite(user, hash, cur=None):
+def remove_favorite(user, hash, session=None):
 	if hash == "playing":
-		song = np
+		song = get_np(session)
 		if not song:
 			return flask.Response(status=500)
 	else:
 		int(hash, 16)  # validate hex
-		song = search_by_hash(cur, hash)
-	song_id = song['id']
-	cur.execute("SELECT id FROM users WHERE name = %s", (user.lower(),))
-	user_id = cur.fetchone()
-	if not user_id:
-		return flask.Response(status=400)
-	cur.execute("""DELETE FROM favorites
-			WHERE user_id = %s AND song = %s;""", (user_id[0], song_id))
-
-	pubsub.events.favorite(dict(action='remove', song=song, user=user))
+		song = session.query(types.Song.hash.startswith(hash)).one()
+	user = session.query(types.User).filter_by(name=user).one()
+	song.favored_by.discard(user)
+	pubsub.events.favorite(dict(action='remove', song=song.json(), user=user.name))
 	return flask.Response(status=200)
 
 def _get_queue():
@@ -267,27 +250,27 @@ def get_queue():
 def history(session):
 	n = min(int(flask.request.args.get('n', 10)), 100)
 	q = (session.query(types.History)
-	     .order_by(types.History.play_time.desc())
-	     .limit(n))
-	return [h.data for h in q]
+		.order_by(types.History.play_time.desc())
+		.limit(n))
+	return [h.json() for h in q]
 
 @app.route("/api/info/<hash>")
-@with_pg_cursor
+@with_db_session
 @json_api
-def info(hash, cur):
-	song = search_by_hash(cur, hash)
+def info(hash, session):
+	song = session.query(types.Song.hash.startswith(hash)).one_or_none()
 	if not song:
 		return flask.Response(status=404)
-	return song
+	return song.json()
 
 @app.route("/api/status")
-@with_pg_cursor
+@with_db_session
 @json_api
-def status(cur):
+def status(session):
 	database = False
 	try:
-		cur.execute('''SELECT 1;''')
-		database = cur.fetchone()[0] == 1
+		res = session.connection().execute('SELECT 1;')
+		database = res.cursor.fetchone()[0] == 1
 	except Exception as e:
 		L.exception("Database check failed")
 
@@ -308,20 +291,28 @@ def status(cur):
 
 @websocket.route("/api/events/playing")
 def ws_connect(ws: WebSocket):
+	with db_session() as s:
+		np = get_np(s)
 	ws.send(json.dumps(np))
 	pubsub.playing.register_client(ws)
 
 @websocket.route("/api/events/all")
 def ws_connect(ws: WebSocket):
+	with db_session() as s:
+		np = get_np(s)
 	ws.send(json.dumps(dict(type='playing', data=np)))
 	ws.send(json.dumps(dict(type='listeners', data=_listeners())))
 	ws.send(json.dumps(dict(type='queue', data=dict(action="initial", queue=_get_queue()))))
 	pubsub.events.register_client(ws)
 
-try:
-	np = requests.get(kawa('np')).json()
-except:
-	np = None
+def get_np(session):
+	hist = (session.query(types.History)
+			.order_by(types.History.id.desc())
+			.limit(1)
+			.one_or_none())
+	np = hist.song.json()
+	np['stared'] = hist.play_time.timestamp()
+	return np
 
 @app.route("/admin/library/update", methods=["POST"])
 @with_db_session
@@ -333,7 +324,7 @@ def update_index(session):
 @with_db_session
 @json_api
 def unlist(session):
-	hash = flask.request.args.get("hash") or np['hash']
+	hash = flask.request.args.get("hash")
 	try:
 		s = session.query(types.Song).filter(types.Song.hash.startswith(hash)).one()
 		s.stats = types.SongStatus.unlisted
@@ -344,13 +335,15 @@ def unlist(session):
 		return {"error": "no matches"}, 400
 
 @app.route("/admin/playing", methods=["POST"])
-@with_pg_cursor
-def update_playing(cur):
-	global np
+@with_db_session
+def update_playing(session):
 	np = flask.request.get_json(force=True)
-	cur.execute("""INSERT INTO history (data) VALUES (%s)""", (np,))
-	np['started'] = datetime.now(timezone.utc).timestamp()
+	queue_id = np.get('queue_id')
+	hist = types.History(song_id=np["id"])
+	session.add(hist)
+	session.flush()
+	np = hist.song.json()
 	pubsub.playing.publish(np)
-	pubsub.events.queue(dict(action='remove', song=np))
+	pubsub.events.queue(dict(action='remove', song=np, queue_id=queue_id))
 	pubsub.events.playing(np)
 	return ""
