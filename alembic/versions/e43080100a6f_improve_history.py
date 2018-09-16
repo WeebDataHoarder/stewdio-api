@@ -26,7 +26,9 @@ def upgrade():
             WHERE song IS NULL""")
     op.execute("""DELETE FROM history WHERE song IS NULL""")
     op.alter_column('history', 'song', nullable=False)
+    op.alter_column('history', 'data', nullable=True)
 
 
 def downgrade():
     op.drop_column('history', 'song')
+    op.alter_column('history', 'data', nullable=False)
