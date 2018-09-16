@@ -2,7 +2,7 @@
 
 _gitname=stewdio-api
 pkgname="${_gitname}-git"
-_gitbranch=refactor-history-db-np
+_gitbranch=master
 pkgver=1.0.0.r48.g14ab2d6
 pkgrel=1
 pkgdesc="Stewdio web radio core API server"
