@@ -86,14 +86,17 @@ def request(hash, session):
 	song = session.query(types.Song).filter(types.Song.hash.startswith(hash)).one()
 	return queue_song(song.json())
 
-@app.route("/api/request/favorite/<user>")
+@app.route("/api/request/favorite/<username>")
 @with_db_session
 @json_api
-def request_favorite(sesion, user, num=1):
+def request_favorite(session, username, num=1):
 	if "num" in flask.request.args:
 		num = int(flask.request.args["num"])
-	favs = (sesion.query(types.User.favorites)
-			.filter(types.User.name == user)
+	user = session.query(types.User).filter_by(name=username).one_or_none()
+	if not user:
+		return None, 404
+	favs = (session.query(types.Song)
+			.filter(types.Song.favored_by.contains(user))
 			.order_by(sa.func.random())
 			.limit(num).all())
 	ret = [queue_song(song.json()) for song in favs]
