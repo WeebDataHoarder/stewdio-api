@@ -12,6 +12,7 @@ import sqlalchemy as sa
 from flask_sockets import Sockets
 from geventwebsocket.websocket import WebSocket
 from sqlalchemy.orm.exc import MultipleResultsFound, NoResultFound
+from stewdio.search import search_favorites
 
 from . import config
 from . import library
@@ -132,7 +133,7 @@ def queue_remove_tail():
 @app.route("/api/download/<hash>")
 @with_db_session
 def download(hash, session):
-	song = session.query(types.Song.hash.startswith(hash)).one_or_none()
+	song = session.query(types.Song).filter(types.Song.hash.startswith(hash)).one_or_none()
 	if not song:
 		return flask.Response(status=404)
 	att_fn = os.path.basename(song.path).encode('ascii', errors='replace').decode('ascii').replace('?', '_')
@@ -181,57 +182,61 @@ gevent.spawn(listeners_updater)
 def playing(session):
 	return get_np(session)
 
-@app.route("/api/favorites/<user>")
-@with_db_session
+@app.route("/api/favorites/<username>")
+@with_pg_cursor
 @json_api
-def favorites(user, session):
-	return [f.json() for f in session.query(types.User)
-		.filter_by(name=user).one().favorites]
+def favorites(username, cur):
+	return search_favorites(cur, username)
 
-@app.route("/api/favorites/<user>/<hash>", methods=["GET"])
+@app.route("/api/favorites/<username>/<hash>", methods=["GET"])
 @json_api
 @with_db_session
-def check_favorite(user, hash, session):
+def check_favorite(username, hash, session):
 	if hash == "playing":
 		song = get_np(session)
 		if not song:
 			return flask.Response(status=500)
 	else:
 		int(hash, 16)  # validate hex
-		song = session.query(types.Song.hash.startswith(hash)).one()
-	user = session.query(types.User).filter_by(name=user).one_or_none()
-	fav = user and user in song.favored_by
+		song = session.query(types.Song).filter(types.Song.hash.startswith(hash)).one()
+	username = session.query(types.User).filter_by(name=username).one_or_none()
+	fav = username and username in song.favored_by
 	return {"favorite": fav}
 
-@app.route("/api/favorites/<user>/<hash>", methods=["PUT"])
+@app.route("/api/favorites/<username>/<hash>", methods=["PUT"])
 @with_db_session
 @requires_api_key_if_user_has_password
-def add_favorite(user, hash, session):
+def add_favorite(username, hash, session):
 	if hash == "playing":
 		song = get_np(session)
 		if not song:
 			return flask.Response(status=500)
 	else:
 		int(hash, 16)  # validate hex
-		song = session.query(types.Song.hash.startswith(hash)).one()
-	user = session.query(types.User).filter_by(name=user).one()
+		song = session.query(types.Song).filter(types.Song.hash.startswith(hash)).one()
+	user = session.query(types.User).filter_by(name=username).one_or_none()
+	if not user:
+		user = types.User(name=username)
+		session.add(user)
 	was_faved = user not in song.favored_by
 	song.favored_by.add(user)
 	pubsub.events.favorite(dict(action='add', song=song.json(), user=user.name))
 	return flask.Response(status=200 if was_faved else 201)
 
-@app.route("/api/favorites/<user>/<hash>", methods=["DELETE"])
+@app.route("/api/favorites/<username>/<hash>", methods=["DELETE"])
 @with_db_session
 @requires_api_key_if_user_has_password
-def remove_favorite(user, hash, session=None):
+def remove_favorite(username, hash, session=None):
 	if hash == "playing":
 		song = get_np(session)
 		if not song:
 			return flask.Response(status=500)
 	else:
 		int(hash, 16)  # validate hex
-		song = session.query(types.Song.hash.startswith(hash)).one()
-	user = session.query(types.User).filter_by(name=user).one()
+		song = session.query(types.Song).filter(types.Song.hash.startswith(hash)).one()
+	user = session.query(types.User).filter_by(name=username).one_or_none()
+	if not user:
+		return flask.Response(status=404)
 	song.favored_by.discard(user)
 	pubsub.events.favorite(dict(action='remove', song=song.json(), user=user.name))
 	return flask.Response(status=200)
@@ -258,7 +263,7 @@ def history(session):
 @with_db_session
 @json_api
 def info(hash, session):
-	song = session.query(types.Song.hash.startswith(hash)).one_or_none()
+	song = session.query(types.Song).filter(types.Song.hash.startswith(hash)).one_or_none()
 	if not song:
 		return flask.Response(status=404)
 	return song.json()
