@@ -319,7 +319,7 @@ def get_np(session):
 			.limit(1)
 			.one_or_none())
 	np = hist.song.json()
-	np['stared'] = hist.play_time.timestamp()
+	np['started'] = hist.play_time.timestamp()
 	return np
 
 @app.route("/admin/library/update", methods=["POST"])
@@ -351,7 +351,8 @@ def update_playing(session):
 	session.add(hist)
 	session.flush()
 	np = hist.song.json()
-	pubsub.playing.publish(np)
 	pubsub.events.queue(dict(action='remove', song=np, queue_id=queue_id))
+	np['started'] = hist.play_time.timestamp()
+	pubsub.playing.publish(np)
 	pubsub.events.playing(np)
 	return ""
