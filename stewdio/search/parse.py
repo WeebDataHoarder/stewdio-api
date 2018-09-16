@@ -9,7 +9,7 @@ EBNF:
 query = ( combination | inverted_query | subquery | elemental_query ) ;
 
 elemental_query = ( qualified | unqualified | quick ) ;
-qualified = WORD , ( COLON | EQUALS ) , string ;
+qualified = WORD , OP , string ;
 unqualified = string ;
 quick = QUICK , string ;
 
@@ -28,13 +28,12 @@ lg = LexerGenerator()
 lg.add('AND', r'AND')
 lg.add('OR', r'OR')
 lg.add('NOT', r'NOT')
-lg.add('WORD', r'[^:"\'()\s=\-#@/][^:)\s=]*')
+lg.add('WORD', r'[^:"\'()\s=<>\-#@/][^:)\s=<>]*')
 lg.add('STRING', r'"[^"]*"|\'[^\']*\'')
 lg.add('MINUS', r'-')
 lg.add('LPAREN', r'\(')
 lg.add('RPAREN', r'\)')
-lg.add('COLON', r':')
-lg.add('EQUALS', r'=')
+lg.add('OP', r'[:=<>]')
 lg.add('QUICK', r'[#@/]')
 
 lg.ignore(r'\s+')
@@ -76,15 +75,12 @@ def alias(p):
     return String(s)
 
 
-@pg.production('qualified : WORD COLON string')
-@pg.production('qualified : WORD EQUALS string')
+@pg.production('qualified : WORD OP string')
 def qualified(p):
-    assert p[0].value in QUALIFIERS
-    op = None
-    if p[1].name == 'EQUALS':
-        op = Ops.EQUALS
-        assert op in QUALIFIERS[p[0].value].supported_ops
-    return Qualified(p[0].value, p[2], op)
+    qualifier = p[0].value
+    assert qualifier in QUALIFIERS
+    op = QUALIFIERS[qualifier].supported_ops[p[1].value]
+    return Qualified(qualifier, p[2], op)
 
 
 @pg.production('unqualified : string')
@@ -147,7 +143,7 @@ def parse(q):
 
 if __name__ == '__main__':
     q = """
-(artist:mizuki OR artist:水樹) AND NOT fav:minus AND album:'supernal liberty' OR million AND #op
+(artist:mizuki OR artist:水樹) AND NOT fav:minus AND album:'supernal liberty' OR million AND #op AND duration>10
 """
     tokens = list(lexer.lex(q))
     #for t in tokens:

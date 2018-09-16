@@ -2,38 +2,45 @@
 
 from psycopg2.sql import Literal, SQL
 
+
 class Ops:
     ILIKE = 'ILIKE'
     IN = 'IN'
     IN_LOWERCASE = 'IN_LOWERCASE'
     EQUALS = 'EQUALS'
+    GREATER_THAN = 'GREATER_THAN'
+    LESS_THAN = 'LESS_THAN'
 
 
 OP_MAP = {
     'ILIKE': lambda k, v: k + SQL(" ILIKE '%' || ") + v + SQL(" || '%'"),
     'IN': lambda k, v: SQL("ARRAY[") + v + SQL("] <@ ") + k,
     'IN_LOWERCASE': lambda k, v: SQL("ARRAY[lower(") + v + SQL(")] <@ ") + k,
-    'EQUALS': lambda k, v: k + SQL(" ILIKE ") + v
+    'EQUALS': lambda k, v: k + SQL(" ILIKE ") + v,
+    'GREATER_THAN': lambda k, v: k + SQL(" > ") + v,
+    'LESS_THAN': lambda k, v: k + SQL(" < ") + v,
 }
 
 
 class OpsConfig:
-    def __init__(self, field, supported_ops):
+    def __init__(self, field, supported_ops, default_op):
         self.field = field
         self.supported_ops = supported_ops
+        self.default_op = default_op
 
 
 QUALIFIERS = {
-    'title': OpsConfig(SQL('songs.title'), (Ops.ILIKE, Ops.EQUALS)),
-    'artist': OpsConfig(SQL('artists.name'), (Ops.ILIKE, Ops.EQUALS)),
-    'album': OpsConfig(SQL('albums.name'), (Ops.ILIKE, Ops.EQUALS)),
-    'hash': OpsConfig(SQL('songs.hash'), (Ops.ILIKE, Ops.EQUALS)),
-    'path': OpsConfig(SQL('songs.path'), (Ops.ILIKE, Ops.EQUALS)),
-    'fav': OpsConfig(SQL('array_agg(users.name)'), (Ops.IN_LOWERCASE,)),
-    'tag': OpsConfig(SQL('array_agg(tags.name)'), (Ops.IN,)),
+    'title': OpsConfig(SQL('songs.title'), {':': Ops.ILIKE, '=': Ops.EQUALS}, Ops.ILIKE),
+    'artist': OpsConfig(SQL('artists.name'), {':': Ops.ILIKE, '=': Ops.EQUALS}, Ops.ILIKE),
+    'album': OpsConfig(SQL('albums.name'), {':': Ops.ILIKE, '=': Ops.EQUALS}, Ops.ILIKE),
+    'hash': OpsConfig(SQL('songs.hash'), {':': Ops.ILIKE, '=': Ops.EQUALS}, Ops.ILIKE),
+    'path': OpsConfig(SQL('songs.path'), {':': Ops.ILIKE, '=': Ops.EQUALS}, Ops.ILIKE),
+    'duration': OpsConfig(SQL('songs.duration'), {'>': Ops.GREATER_THAN, '<': Ops.LESS_THAN}, None),
+    'fav': OpsConfig(SQL('array_agg(users.name)'), {':': Ops.IN_LOWERCASE,}, Ops.IN_LOWERCASE),
+    'tag': OpsConfig(SQL('array_agg(tags.name)'), {':': Ops.IN,}, Ops.IN),
 }
 
-# when no qualifier is given, look at all those
+# when no qualifier is given, look at all those; must have a default op
 UNQUALIFIERS = ('title', 'artist', 'tag')
 
 QUICK = {
@@ -113,16 +120,13 @@ class Qualified:
         self.qualifier = qualifier
         self.search_term = search_term
         self.oc = QUALIFIERS[self.qualifier]
-        self.op = op
+        self.op = op if op else self.oc.default_op
 
     def build(self):
-        op = self.op or self.oc.supported_ops[0]
-        return OP_MAP[op](self.oc.field, self.search_term.build())
+        return OP_MAP[self.op](self.oc.field, self.search_term.build())
 
     def __repr__(self):
-        op = ''
-        if self.op:
-            op = f', op=Ops.{self.op}'
+        op = f', op=Ops.{self.op}' if self.op else ''
         return f'{self.__class__.__name__}({self.qualifier!r}, {self.search_term!r}{op})'
 
     def __eq__(self, other):
@@ -139,7 +143,7 @@ class Unqualified:
     def build(self):
         def build_one(qualifier):
             oc = QUALIFIERS[qualifier]
-            op = oc.supported_ops[0]
+            op = oc.default_op
             return OP_MAP[op](oc.field, self.search_term.build())
         return SQL('(') + SQL(' OR ').join(build_one(q) for q in UNQUALIFIERS) + SQL(')')
 

@@ -23,6 +23,7 @@ cases = (
     ('''(fav:minus OR fav:nyc OR fav:jdiez) NOT fav:sircmpwn''', And(Or(Or(Qualified('fav', String('minus')), Qualified('fav', String('nyc'))), Qualified('fav', String('jdiez'))), Not(Qualified('fav', String('sircmpwn')))), Composed([SQL('('), SQL('('), SQL('('), SQL('ARRAY[lower('), Literal('minus'), SQL(')] <@ '), SQL('array_agg(users.name)'), SQL(' OR '), SQL('ARRAY[lower('), Literal('nyc'), SQL(')] <@ '), SQL('array_agg(users.name)'), SQL(')'), SQL(' OR '), SQL('ARRAY[lower('), Literal('jdiez'), SQL(')] <@ '), SQL('array_agg(users.name)'), SQL(')'), SQL(' AND '), SQL('NOT '), SQL('ARRAY[lower('), Literal('sircmpwn'), SQL(')] <@ '), SQL('array_agg(users.name)'), SQL(')')])),
     ('''title="why?"''', Qualified('title', String('why?'), op=Ops.EQUALS), None),
     ('''#op @minus''', And(Qualified('tag', String('op')), Qualified('fav', String('minus'))), None),
+    ('''duration>10 AND duration<500''', And(Qualified('duration', String('10'), op=Ops.GREATER_THAN), Qualified('duration', String('500'), op=Ops.LESS_THAN)), None),
 )
 
 @pytest.mark.parametrize('input,expected_ast,expected_sql', cases)
