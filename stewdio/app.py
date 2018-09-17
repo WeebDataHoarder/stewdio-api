@@ -183,7 +183,7 @@ gevent.spawn(listeners_updater)
 @with_db_session
 @json_api
 def playing(session):
-	return get_np(session)
+	return get_np_json(session)
 
 @app.route("/api/favorites/<username>")
 @with_pg_cursor
@@ -196,7 +196,7 @@ def favorites(username, cur):
 @with_db_session
 def check_favorite(username, hash, session):
 	if hash == "playing":
-		song = get_np(session)
+		song = get_np_song(session)
 		if not song:
 			return flask.Response(status=500)
 	else:
@@ -211,7 +211,7 @@ def check_favorite(username, hash, session):
 @requires_api_key_if_user_has_password
 def add_favorite(username, hash, session):
 	if hash == "playing":
-		song = get_np(session)
+		song = get_np_song(session)
 		if not song:
 			return flask.Response(status=500)
 	else:
@@ -231,7 +231,7 @@ def add_favorite(username, hash, session):
 @requires_api_key_if_user_has_password
 def remove_favorite(username, hash, session):
 	if hash == "playing":
-		song = get_np(session)
+		song = get_np_song(session)
 		if not song:
 			return flask.Response(status=500)
 	else:
@@ -300,20 +300,27 @@ def status(session):
 @websocket.route("/api/events/playing")
 def ws_connect(ws: WebSocket):
 	with db_session() as s:
-		np = get_np(s)
+		np = get_np_json(s)
 	ws.send(json.dumps(np))
 	pubsub.playing.register_client(ws)
 
 @websocket.route("/api/events/all")
 def ws_connect(ws: WebSocket):
 	with db_session() as s:
-		np = get_np(s)
+		np = get_np_json(s)
 	ws.send(json.dumps(dict(type='playing', data=np)))
 	ws.send(json.dumps(dict(type='listeners', data=_listeners())))
 	ws.send(json.dumps(dict(type='queue', data=dict(action="initial", queue=_get_queue()))))
 	pubsub.events.register_client(ws)
 
-def get_np(session):
+def get_np_song(session):
+	hist = (session.query(types.History)
+			.order_by(types.History.id.desc())
+			.limit(1)
+			.one_or_none())
+	return hist.song
+
+def get_np_json(session):
 	hist = (session.query(types.History)
 			.order_by(types.History.id.desc())
 			.limit(1)
