@@ -39,17 +39,17 @@ def request_logger():
 
 def requires_api_key_if_user_has_password(fn):
 	@wraps(fn)
-	def wrapper(*args, user, session, **kwargs):
+	def wrapper(*args, username, session, **kwargs):
 		db_user = find_user_by_api_key(session, flask.request)
-		if not db_user or db_user.name != user:
-			db_user = session.query(types.User).filter_by(name=user.lower()).one_or_none()
+		if not db_user or db_user.name != username:
+			db_user = session.query(types.User).filter_by(name=username.lower()).one_or_none()
 			if db_user and db_user.password:
 				return flask.Response(
 					json.dumps({"error": "authentication required"}),
 					status=401,
 					headers={'WWW-Authenticate': 'Basic realm="Authentication Required"'}
 				)
-		return fn(*args, user=user, **kwargs)
+		return fn(*args, username=username, session=session, **kwargs)
 
 	return wrapper
 
@@ -221,7 +221,7 @@ def add_favorite(username, hash, session):
 	if not user:
 		user = types.User(name=username)
 		session.add(user)
-	was_faved = user not in song.favored_by
+	was_faved = user in song.favored_by
 	song.favored_by.add(user)
 	pubsub.events.favorite(dict(action='add', song=song.json(), user=user.name))
 	return flask.Response(status=200 if was_faved else 201)
@@ -229,7 +229,7 @@ def add_favorite(username, hash, session):
 @app.route("/api/favorites/<username>/<hash>", methods=["DELETE"])
 @with_db_session
 @requires_api_key_if_user_has_password
-def remove_favorite(username, hash, session=None):
+def remove_favorite(username, hash, session):
 	if hash == "playing":
 		song = get_np(session)
 		if not song:
