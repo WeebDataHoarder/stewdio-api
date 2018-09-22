@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from .ast import Qualified
+from .ast import Qualified, String
 from .parse import parse
 from psycopg2.sql import SQL, Literal
 
@@ -32,7 +32,7 @@ def search(cursor, query, limit=None):
 
 
 def search_favorites(cursor, user):
-    q = BASE_QUERY.format(where=Qualified('fav', user).build())
+    q = BASE_QUERY.format(where=SQL(' WHERE ') + Qualified('fav', String(user)).build())
     cursor.execute(q, (user,))
     return [dict(r) for r in cursor]
 
