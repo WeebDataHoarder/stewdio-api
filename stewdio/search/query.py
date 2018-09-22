@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-
+from .ast import Qualified
 from .parse import parse
 from psycopg2.sql import SQL, Literal
 
@@ -13,54 +13,29 @@ SELECT
     songs.path AS path,
     songs.duration AS duration,
     songs.status AS status,
-    array_remove(array_agg(DISTINCT tags.name), NULL) AS tags,
-    array_remove(array_agg(DISTINCT users.name), NULL) AS favored_by
+    ARRAY(SELECT tags.name FROM taggings JOIN tags ON (taggings.tag = tags.id) WHERE taggings.song = songs.id) AS tags,
+    ARRAY(SELECT users.name FROM users JOIN favorites ON (favorites.user_id = users.id) WHERE favorites.song = songs.id) AS favored_by
 FROM songs
 JOIN artists ON songs.artist = artists.id
 JOIN albums ON songs.album = albums.id
-LEFT JOIN favorites ON songs.id = favorites.song
-LEFT JOIN users ON favorites.user_id = users.id
-LEFT JOIN taggings ON songs.id = taggings.song
-LEFT JOIN tags ON taggings.tag = tags.id
 {where}
-GROUP BY
-    songs.id,
-    songs.hash,
-    songs.title,
-    artists.name,
-    albums.name,
-    songs.path,
-    songs.duration,
-    songs.status
 ''')
 
 
 def search(cursor, query, limit=None):
-    where = SQL("WHERE songs.status = 'active'")
-    having = parse(query).build()
+    where = SQL("WHERE songs.status = 'active' AND ") + parse(query).build()
     q = BASE_QUERY.format(where=where)
-    q += SQL(' HAVING ') + having
     if limit:
         q += SQL(' LIMIT ') + Literal(limit)
     cursor.execute(q)
     return [dict(r) for r in cursor]
 
 
-def search_by_hash(cursor, hash):
-    q = BASE_QUERY.format(where=SQL(''))
-    q += SQL(" HAVING songs.hash ILIKE %s || '%%'")
-    cursor.execute(q, (hash,))
-    if cursor.rowcount > 1:
-        raise ValueError(f"Expected one result, got {cursor.rowcount}")
-    elif cursor.rowcount == 0:
-        return None
-    return dict(cursor.fetchone())
-
 def search_favorites(cursor, user):
-    q = BASE_QUERY.format(where=SQL(''))
-    q += SQL(" HAVING ARRAY[%s] <@ array_agg(users.name)")
-    cursor.execute(q, (user.lower(),))
+    q = BASE_QUERY.format(where=Qualified('fav', user).build())
+    cursor.execute(q, (user,))
     return [dict(r) for r in cursor]
+
 
 def get_random(cursor, off_vocal_regex=None):
     where = SQL("WHERE songs.status = 'active'")
@@ -88,11 +63,11 @@ if __name__ == '__main__':
     print("original query from user input:")
     print(q)
 
-    having = parse(q).build()
+    where = parse(q).build()
     q = BASE_QUERY.format(where=SQL(''))
-    q += SQL(' HAVING ') + having
+    q += SQL(' WHERE ') + where
     print("generated SQL condition:")
-    print(having)
+    print(where)
     print("generated SQL query:")
     print(cursor.mogrify(q).decode())
     cursor.execute(q)

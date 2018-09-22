@@ -5,7 +5,6 @@ from psycopg2.sql import Literal, SQL
 
 class Ops:
     ILIKE = 'ILIKE'
-    IN = 'IN'
     IN_LOWERCASE = 'IN_LOWERCASE'
     EQUALS = 'EQUALS'
     GREATER_THAN = 'GREATER_THAN'
@@ -14,11 +13,10 @@ class Ops:
 
 OP_MAP = {
     'ILIKE': lambda k, v: k + SQL(" ILIKE '%' || ") + v + SQL(" || '%'"),
-    'IN': lambda k, v: SQL("ARRAY[") + v + SQL("] <@ ") + k,
-    'IN_LOWERCASE': lambda k, v: SQL("ARRAY[lower(") + v + SQL(")] <@ ") + k,
-    'EQUALS': lambda k, v: k + SQL(" ILIKE ") + v,
-    'GREATER_THAN': lambda k, v: k + SQL(" > ") + v,
-    'LESS_THAN': lambda k, v: k + SQL(" < ") + v,
+    'IN_LOWERCASE': lambda k, v: SQL('EXISTS(') + k.format(SQL('lower({})').format(v)) + SQL(')'),
+    'EQUALS': lambda k, v: k + SQL(' ILIKE ') + v,
+    'GREATER_THAN': lambda k, v: k + SQL(' > ') + v,
+    'LESS_THAN': lambda k, v: k + SQL(' < ') + v,
 }
 
 
@@ -36,8 +34,8 @@ QUALIFIERS = {
     'hash': OpsConfig(SQL('songs.hash'), {':': Ops.ILIKE, '=': Ops.EQUALS}, Ops.ILIKE),
     'path': OpsConfig(SQL('songs.path'), {':': Ops.ILIKE, '=': Ops.EQUALS}, Ops.ILIKE),
     'duration': OpsConfig(SQL('songs.duration'), {'>': Ops.GREATER_THAN, '<': Ops.LESS_THAN}, None),
-    'fav': OpsConfig(SQL('array_agg(users.name)'), {':': Ops.IN_LOWERCASE,}, Ops.IN_LOWERCASE),
-    'tag': OpsConfig(SQL('array_agg(tags.name)'), {':': Ops.IN,}, Ops.IN),
+    'fav': OpsConfig(SQL('SELECT 1 FROM users JOIN favorites ON (favorites.user_id = users.id) WHERE favorites.song = songs.id AND users.name = {}'), {':': Ops.IN_LOWERCASE,}, Ops.IN_LOWERCASE),
+    'tag': OpsConfig(SQL('SELECT 1 FROM taggings JOIN tags ON (taggings.tag = tags.id) WHERE taggings.song = songs.id AND tags.name = {}'), {':': Ops.IN_LOWERCASE,}, Ops.IN_LOWERCASE),
 }
 
 # when no qualifier is given, look at all those; must have a default op

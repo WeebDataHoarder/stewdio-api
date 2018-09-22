@@ -20,9 +20,10 @@ cases = (
     ('''(artist:mizuki OR artist:水樹) AND NOT fav:minus AND album:'supernal liberty' OR million''', Or(And(And(Or(Qualified('artist', String('mizuki')), Qualified('artist', String('水樹'))), Not(Qualified('fav', String('minus')))), Qualified('album', String('supernal liberty'))), Unqualified(String('million'))), None),
     ('''world.execute(me)''', (ValueError, "Ran into a Token('RPAREN', ')') where it wasn't expected"), None),
     ('''path:"comet lucifer" -inst''', And(Qualified('path', String('comet lucifer')), Not(Unqualified(String('inst')))), None),
-    ('''(fav:minus OR fav:nyc OR fav:jdiez) NOT fav:sircmpwn''', And(Or(Or(Qualified('fav', String('minus')), Qualified('fav', String('nyc'))), Qualified('fav', String('jdiez'))), Not(Qualified('fav', String('sircmpwn')))), Composed([SQL('('), SQL('('), SQL('('), SQL('ARRAY[lower('), Literal('minus'), SQL(')] <@ '), SQL('array_agg(users.name)'), SQL(' OR '), SQL('ARRAY[lower('), Literal('nyc'), SQL(')] <@ '), SQL('array_agg(users.name)'), SQL(')'), SQL(' OR '), SQL('ARRAY[lower('), Literal('jdiez'), SQL(')] <@ '), SQL('array_agg(users.name)'), SQL(')'), SQL(' AND '), SQL('NOT '), SQL('ARRAY[lower('), Literal('sircmpwn'), SQL(')] <@ '), SQL('array_agg(users.name)'), SQL(')')])),
+    ('''(fav:minus OR fav:nyc OR fav:jdiez) NOT fav:sircmpwn''', And(Or(Or(Qualified('fav', String('minus')), Qualified('fav', String('nyc'))), Qualified('fav', String('jdiez'))), Not(Qualified('fav', String('sircmpwn')))), Composed([SQL('('), SQL('('), SQL('('), SQL('EXISTS('), SQL('SELECT 1 FROM users JOIN favorites ON (favorites.user_id = users.id) WHERE favorites.song = songs.id AND users.name = '), Composed([SQL('lower('), Literal('minus'), SQL(')')]), SQL(')'), SQL(' OR '), SQL('EXISTS('), SQL('SELECT 1 FROM users JOIN favorites ON (favorites.user_id = users.id) WHERE favorites.song = songs.id AND users.name = '), Composed([SQL('lower('), Literal('nyc'), SQL(')')]), SQL(')'), SQL(')'), SQL(' OR '), SQL('EXISTS('), SQL('SELECT 1 FROM users JOIN favorites ON (favorites.user_id = users.id) WHERE favorites.song = songs.id AND users.name = '), Composed([SQL('lower('), Literal('jdiez'), SQL(')')]), SQL(')'), SQL(')'), SQL(' AND '), SQL('NOT '), SQL('EXISTS('), SQL('SELECT 1 FROM users JOIN favorites ON (favorites.user_id = users.id) WHERE favorites.song = songs.id AND users.name = '), Composed([SQL('lower('), Literal('sircmpwn'), SQL(')')]), SQL(')'), SQL(')')])),
     ('''title="why?"''', Qualified('title', String('why?'), op=Ops.EQUALS), None),
     ('''#op @minus''', And(Qualified('tag', String('op')), Qualified('fav', String('minus'))), None),
+    ('''@minus''', Qualified('fav', String('minus')), Composed([SQL('EXISTS('), SQL('SELECT 1 FROM users JOIN favorites ON (favorites.user_id = users.id) WHERE favorites.song = songs.id AND users.name = '), Composed([SQL('lower('), Literal('minus'), SQL(')')]), SQL(')')])),
     ('''duration>10 AND duration<500''', And(Qualified('duration', String('10'), op=Ops.GREATER_THAN), Qualified('duration', String('500'), op=Ops.LESS_THAN)), None),
 )
 
@@ -34,4 +35,6 @@ def test_parse(input, expected_ast, expected_sql):
         parsed = e.__class__, *e.args
     assert expected_ast == parsed
     if expected_sql is not None:
-        assert parsed.build() == expected_sql
+        generated_sql = parsed.build()
+        print(generated_sql)
+        assert generated_sql == expected_sql
