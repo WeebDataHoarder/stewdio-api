@@ -15,6 +15,6 @@ class History(Base):
     def json(self):
         return dict(
             id=self.id,
-            play_time=self.play_time,
+            play_time=self.play_time.timestamp(),
             song=self.song.json(),
         )
