@@ -41,7 +41,7 @@ def requires_api_key_if_user_has_password(fn):
 	@wraps(fn)
 	def wrapper(*args, username, session, **kwargs):
 		db_user = find_user_by_api_key(session, flask.request)
-		if not db_user or db_user.name != username:
+		if not db_user or db_user.name != username.lower():
 			db_user = session.query(types.User).filter_by(name=username.lower()).one_or_none()
 			if db_user and db_user.password:
 				return flask.Response(
@@ -189,12 +189,14 @@ def playing(session):
 @with_pg_cursor
 @json_api
 def favorites(username, cur):
+	username = username.lower()
 	return search_favorites(cur, username)
 
 @app.route("/api/favorites/<username>/<hash>", methods=["GET"])
 @json_api
 @with_db_session
 def check_favorite(username, hash, session):
+	username = username.lower()
 	if hash == "playing":
 		song = get_np_song(session)
 		if not song:
@@ -210,6 +212,7 @@ def check_favorite(username, hash, session):
 @with_db_session
 @requires_api_key_if_user_has_password
 def add_favorite(username, hash, session):
+	username = username.lower()
 	if hash == "playing":
 		song = get_np_song(session)
 		if not song:
@@ -230,6 +233,7 @@ def add_favorite(username, hash, session):
 @with_db_session
 @requires_api_key_if_user_has_password
 def remove_favorite(username, hash, session):
+	username = username.lower()
 	if hash == "playing":
 		song = get_np_song(session)
 		if not song:
