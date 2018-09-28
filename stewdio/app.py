@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import random
+from datetime import datetime
 from functools import wraps
 from urllib.parse import urlsplit, parse_qs
 
@@ -358,12 +359,13 @@ def unlist(session):
 def update_playing(session):
 	np = flask.request.get_json(force=True)
 	queue_id = np.get('queue_id')
-	hist = types.History(song_id=np["id"])
-	session.add(hist)
-	session.flush()
-	np = hist.song.json()
+	if 'id' in np:
+		hist = types.History(song_id=np["id"])
+		session.add(hist)
+		session.flush()
+		np = hist.song.json()
 	pubsub.events.queue(dict(action='remove', song=np, queue_id=queue_id))
-	np['started'] = hist.play_time.timestamp()
+	np['started'] = datetime.utcnow().timestamp()
 	pubsub.playing.publish(np)
 	pubsub.events.playing(np)
 	return ""
