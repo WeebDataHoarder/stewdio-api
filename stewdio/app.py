@@ -91,6 +91,7 @@ def request(hash, session):
 @with_db_session
 @json_api
 def request_favorite(session, username, num=1):
+	username = username.lower()
 	if "num" in flask.request.args:
 		num = int(flask.request.args["num"])
 	user = session.query(types.User).filter_by(name=username).one_or_none()
