@@ -348,7 +348,7 @@ def unlist(session):
 	hash = flask.request.args.get("hash")
 	try:
 		s = session.query(types.Song).filter(types.Song.hash.startswith(hash)).one()
-		s.stats = types.SongStatus.unlisted
+		s.status = types.SongStatus.unlisted
 		return s.json()
 	except MultipleResultsFound as e:
 		return {"error": "multiple matches"}, 400
