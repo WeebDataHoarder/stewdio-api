@@ -48,11 +48,18 @@ QUICK = {
 }
 
 
+class Context:
+    # not part of the AST
+    def __init__(self, artist=None, album=None):
+        self.artist = artist
+        self.album = album
+
+
 class String:
     def __init__(self, value):
         self.value = value
 
-    def build(self):
+    def build(self, context):
         return Literal(self.value)
 
     def __repr__(self):
@@ -67,8 +74,8 @@ class Not:
     def __init__(self, query):
         self.query = query
 
-    def build(self):
-        return SQL('NOT ') + self.query.build()
+    def build(self, context):
+        return SQL('NOT ') + self.query.build(context)
 
     def __repr__(self):
         return f'{self.__class__.__name__}({self.query!r})'
@@ -83,8 +90,8 @@ class And:
         self.left = left
         self.right = right
 
-    def build(self):
-        return SQL('(') + self.left.build() + SQL(' AND ') + self.right.build() + SQL(')')
+    def build(self, context):
+        return SQL('(') + self.left.build(context) + SQL(' AND ') + self.right.build(context) + SQL(')')
 
     def __repr__(self):
         return f'{self.__class__.__name__}({self.left!r}, {self.right!r})'
@@ -100,8 +107,8 @@ class Or:
         self.left = left
         self.right = right
 
-    def build(self):
-        return SQL('(') + self.left.build() + SQL(' OR ') + self.right.build() + SQL(')')
+    def build(self, context):
+        return SQL('(') + self.left.build(context) + SQL(' OR ') + self.right.build(context) + SQL(')')
 
     def __repr__(self):
         return f'{self.__class__.__name__}({self.left!r}, {self.right!r})'
@@ -120,8 +127,8 @@ class Qualified:
         self.oc = QUALIFIERS[self.qualifier]
         self.op = op if op else self.oc.default_op
 
-    def build(self):
-        return OP_MAP[self.op](self.oc.field, self.search_term.build())
+    def build(self, context):
+        return OP_MAP[self.op](self.oc.field, self.search_term.build(context))
 
     def __repr__(self):
         op = f', op=Ops.{self.op}' if self.op else ''
@@ -138,11 +145,11 @@ class Unqualified:
     def __init__(self, search_term):
         self.search_term = search_term
 
-    def build(self):
+    def build(self, context):
         def build_one(qualifier):
             oc = QUALIFIERS[qualifier]
             op = oc.default_op
-            return OP_MAP[op](oc.field, self.search_term.build())
+            return OP_MAP[op](oc.field, self.search_term.build(context))
         return SQL('(') + SQL(' OR ').join(build_one(q) for q in UNQUALIFIERS) + SQL(')')
 
     def __repr__(self):
@@ -151,3 +158,18 @@ class Unqualified:
     def __eq__(self, other):
         return (isinstance(other, self.__class__)
                 and other.search_term == self.search_term)
+
+
+class Variable:
+    def __init__(self, name):
+        self.name = name
+        self.oc = QUALIFIERS[name]
+
+    def build(self, context):
+        return OP_MAP[Ops.EQUALS](self.oc.field, Literal(getattr(context, self.name)))
+
+    def __repr__(self):
+        return f'{self.__class__.__name__}({self.name!r})'
+
+    def __eq__(self, other):
+        return (isinstance(other, self.__class__) and other.name == self.name)

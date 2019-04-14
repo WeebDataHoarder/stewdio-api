@@ -8,10 +8,11 @@ EBNF:
 
 query = ( combination | inverted_query | subquery | elemental_query ) ;
 
-elemental_query = ( qualified | unqualified | quick ) ;
+elemental_query = ( qualified | unqualified | quick | variable ) ;
 qualified = WORD , OP , string ;
 unqualified = string ;
 quick = QUICK , string ;
+variable = DOLLAR , string ;
 
 combination = query , [ ( AND | OR ) ] , query ;
 
@@ -28,13 +29,14 @@ lg = LexerGenerator()
 lg.add('AND', r'AND')
 lg.add('OR', r'OR')
 lg.add('NOT', r'NOT')
-lg.add('WORD', r'[^:"\'()\s=<>\-#@/][^:)\s=<>]*')
+lg.add('WORD', r'[^:"\'()\s=<>\-#@/$][^:)\s=<>]*')
 lg.add('STRING', r'"[^"]*"|\'[^\']*\'')
 lg.add('MINUS', r'-')
 lg.add('LPAREN', r'\(')
 lg.add('RPAREN', r'\)')
 lg.add('OP', r'[:=<>]')
 lg.add('QUICK', r'[#@/]')
+lg.add('DOLLAR', r'\$')
 
 lg.ignore(r'\s+')
 
@@ -60,6 +62,7 @@ def main(p):
 @pg.production('elemental_query : qualified')
 @pg.production('elemental_query : unqualified')
 @pg.production('elemental_query : quick')
+@pg.production('elemental_query : variable')
 @pg.production('not : NOT')
 @pg.production('not : MINUS')
 def alias(p):
@@ -93,6 +96,11 @@ def quick(p):
     assert p[0].value in QUICK
     qualifier_name = QUICK[p[0].value]
     return Qualified(qualifier_name, p[1])
+
+
+@pg.production('variable : DOLLAR string')
+def variable(p):
+    return Variable(p[1].value)
 
 
 @pg.production('inverted_query : not query', precedence='NOT')
@@ -153,4 +161,4 @@ if __name__ == '__main__':
     print(ast)
     import psycopg2
     conn = psycopg2.connect('')
-    print(ast.build().as_string(conn))
+    print(ast.build(None).as_string(conn))

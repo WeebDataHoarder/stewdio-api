@@ -22,8 +22,8 @@ JOIN albums ON songs.album = albums.id
 ''')
 
 
-def search(cursor, query, limit=None):
-    where = SQL("WHERE songs.status = 'active' AND ") + parse(query).build()
+def search(cursor, context, query, limit=None):
+    where = SQL("WHERE songs.status = 'active' AND ") + parse(query).build(context)
     q = BASE_QUERY.format(where=where)
     if limit:
         q += SQL(' LIMIT ') + Literal(limit)
@@ -32,7 +32,7 @@ def search(cursor, query, limit=None):
 
 
 def search_favorites(cursor, user):
-    q = BASE_QUERY.format(where=SQL(' WHERE ') + Qualified('fav', String(user)).build())
+    q = BASE_QUERY.format(where=SQL(' WHERE ') + Qualified('fav', String(user)).build(None))
     cursor.execute(q, (user,))
     return [dict(r) for r in cursor]
 
@@ -63,7 +63,7 @@ if __name__ == '__main__':
     print("original query from user input:")
     print(q)
 
-    where = parse(q).build()
+    where = parse(q).build(None)
     q = BASE_QUERY.format(where=SQL(''))
     q += SQL(' WHERE ') + where
     print("generated SQL condition:")
