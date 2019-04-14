@@ -21,7 +21,7 @@ from . import pubsub
 from . import tagging
 from . import types
 from .misc import json_api, with_pg_cursor, with_db_session, db_session
-from .search import search as search_internal, get_random
+from .search import search as search_internal, get_random, Context as SearchContext
 from .user import api as user_api, find_user_by_api_key
 
 L = logging.getLogger("stewdio.app")
@@ -58,14 +58,20 @@ def requires_api_key_if_user_has_password(fn):
 @with_pg_cursor
 @json_api
 def search(q, cur):
-	return search_internal(cur, q, limit=int(flask.request.args.get("limit", 0)) or None)
+	limit = int(flask.request.args.get("limit", 0)) or None
+	with db_session() as session:
+		context = get_np_context(session)
+	return search_internal(cur, context, q, limit=limit)
 
 @app.route("/api/search")
 @with_pg_cursor
 @json_api
 def search2(cur):
 	q = flask.request.args['q']
-	return search_internal(cur, q, limit=int(flask.request.args.get("limit", 0)) or None)
+	limit = int(flask.request.args.get("limit", 0)) or None
+	with db_session() as session:
+		context = get_np_context(session)
+	return search_internal(cur, context, q, limit=limit)
 
 @app.route("/api/random")
 @with_pg_cursor
@@ -108,7 +114,9 @@ def request_favorite(session, username, num=1):
 @with_pg_cursor
 @json_api
 def request_random(terms, cur):
-	songs = search_internal(cur, terms)
+	with db_session() as session:
+		context = get_np_context(session)
+	songs = search_internal(cur, context, terms)
 	if not songs:
 		return flask.Response(status=404)
 	song = random.choice(songs)
@@ -334,6 +342,13 @@ def get_np_json(session):
 	np = hist.song.json()
 	np['started'] = hist.play_time.timestamp()
 	return np
+
+def get_np_context(session):
+	song = get_np_song(session)
+	return SearchContext(
+		artist=song.artist.name,
+		album=song.album.name,
+	)
 
 @app.route("/admin/library/update", methods=["POST"])
 @with_db_session

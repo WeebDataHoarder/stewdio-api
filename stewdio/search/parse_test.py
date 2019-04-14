@@ -25,7 +25,8 @@ cases = (
     ('''#op @minus''', And(Qualified('tag', String('op')), Qualified('fav', String('minus'))), None, None),
     ('''@minus''', Qualified('fav', String('minus')), Composed([SQL('EXISTS('), SQL('SELECT 1 FROM users JOIN favorites ON (favorites.user_id = users.id) WHERE favorites.song = songs.id AND users.name = '), Composed([SQL('lower('), Literal('minus'), SQL(')')]), SQL(')')]), None),
     ('''duration>10 AND duration<500''', And(Qualified('duration', String('10'), op=Ops.GREATER_THAN), Qualified('duration', String('500'), op=Ops.LESS_THAN)), None, None),
-    ('''$album''', Variable('album'), Composed([SQL('albums.name'), SQL(' ILIKE '), Literal('test album')]), Context(album='test album'))
+    ('''$album''', Variable('album'), Composed([SQL('albums.name'), SQL(' ILIKE '), Literal('test album')]), Context(album='test album')),
+    ('''title=test $album''', And(Qualified('title', String('test'), op=Ops.EQUALS), Variable('album')), Composed([SQL('('), SQL('songs.title'), SQL(' ILIKE '), Literal('test'), SQL(' AND '), SQL('albums.name'), SQL(' ILIKE '), Literal('test album'), SQL(')')]), Context(album='test album')),
 )
 
 @pytest.mark.parametrize('input,expected_ast,expected_sql,context', cases)
