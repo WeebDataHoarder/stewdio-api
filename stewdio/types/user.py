@@ -7,6 +7,7 @@ class User(Base):
     id = sa.Column(sa.Integer, primary_key=True)
     name = sa.Column(sa.Text, nullable=False)
     password = sa.Column(sa.Text, nullable=True)
+    user_metadata = sa.Column(sa.JSON().with_variant(sa.dialects.postgresql.JSONB(none_as_null=True), 'postgresql'), nullable=True)
 
     favorites = sa.orm.relationship("Song",
             secondary="favorites",

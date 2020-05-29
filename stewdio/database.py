@@ -9,9 +9,10 @@ L = logging.getLogger("stewdio.database")
 
 Base = declarative_base()
 
+
 class Database:
     def __init__(self, connection_string):
-        self.engine = create_engine(connection_string)
+        self.engine = create_engine(connection_string, connect_args={"options": "-c statement_timeout=10000"})
 
         @event.listens_for(Base, 'before_insert', propagate=True)
         def before_insert(mapper, connection, target):
@@ -34,7 +35,9 @@ class Database:
 
         return session
 
+
 if __name__ == '__main__':
     from .config import db
     from .types import *
+
     session = db.create_session()

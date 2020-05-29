@@ -5,16 +5,24 @@ from psycopg2.sql import Literal, SQL
 
 class Ops:
     ILIKE = 'ILIKE'
+    IN_LOOSE_ILIKE = 'IN_LOOSE_ILIKE'
+    IN_ILIKE = 'IN_ILIKE'
+    IN_EQUALS = 'IN_EQUALS'
     IN_LOWERCASE = 'IN_LOWERCASE'
     EQUALS = 'EQUALS'
+    PLAIN_EQUALS = 'PLAIN_EQUALS'
     GREATER_THAN = 'GREATER_THAN'
     LESS_THAN = 'LESS_THAN'
 
 
 OP_MAP = {
     'ILIKE': lambda k, v: k + SQL(" ILIKE '%' || ") + v + SQL(" || '%'"),
+    'IN_LOOSE_ILIKE': lambda k, v: k['field'] + SQL(' IN(SELECT ') + k['table_value'] + SQL(' FROM ') + k['table'] + SQL(' WHERE ') + k['table_field'] + SQL(" % ") + v + SQL(' ORDER BY similarity(') + k['table_field'] + SQL(', ') + v + SQL(') DESC, id ASC)'),
+    'IN_ILIKE': lambda k, v: k['field'] + SQL(' IN(SELECT ') + k['table_value'] + SQL(' FROM ') + k['table'] + SQL(' WHERE ') + k['table_field'] + SQL(" ILIKE '%' || ") + v + SQL(" || '%'") + SQL(')'),
+    'IN_EQUALS': lambda k, v: k['field'] + SQL(' IN(SELECT ') + k['table_value'] + SQL(' FROM ') + k['table'] + SQL(' WHERE ') + k['table_field'] + SQL(" ILIKE ") + v + SQL(')'),
     'IN_LOWERCASE': lambda k, v: SQL('EXISTS(') + k.format(SQL('lower({})').format(v)) + SQL(')'),
     'EQUALS': lambda k, v: k + SQL(' ILIKE ') + v,
+    'PLAIN_EQUALS': lambda k, v: k + SQL(' = ') + v,
     'GREATER_THAN': lambda k, v: k + SQL(' > ') + v,
     'LESS_THAN': lambda k, v: k + SQL(' < ') + v,
 }
@@ -27,19 +35,32 @@ class OpsConfig:
         self.default_op = default_op
 
 
+IN_STRING_OPS = {':': Ops.IN_ILIKE, '=': Ops.IN_EQUALS, '~': Ops.IN_LOOSE_ILIKE}
+STRING_OPS = {':': Ops.ILIKE, '=': Ops.EQUALS}
+NUM_OPS = {':': Ops.PLAIN_EQUALS, '=': Ops.PLAIN_EQUALS, '>': Ops.GREATER_THAN, '<': Ops.LESS_THAN, }
+
 QUALIFIERS = {
-    'title': OpsConfig(SQL('songs.title'), {':': Ops.ILIKE, '=': Ops.EQUALS}, Ops.ILIKE),
-    'artist': OpsConfig(SQL('artists.name'), {':': Ops.ILIKE, '=': Ops.EQUALS}, Ops.ILIKE),
-    'album': OpsConfig(SQL('albums.name'), {':': Ops.ILIKE, '=': Ops.EQUALS}, Ops.ILIKE),
-    'hash': OpsConfig(SQL('songs.hash'), {':': Ops.ILIKE, '=': Ops.EQUALS}, Ops.ILIKE),
-    'path': OpsConfig(SQL('songs.path'), {':': Ops.ILIKE, '=': Ops.EQUALS}, Ops.ILIKE),
-    'duration': OpsConfig(SQL('songs.duration'), {'>': Ops.GREATER_THAN, '<': Ops.LESS_THAN}, None),
-    'fav': OpsConfig(SQL('SELECT 1 FROM users JOIN favorites ON (favorites.user_id = users.id) WHERE favorites.song = songs.id AND users.name = {}'), {':': Ops.IN_LOWERCASE,}, Ops.IN_LOWERCASE),
-    'tag': OpsConfig(SQL('SELECT 1 FROM taggings JOIN tags ON (taggings.tag = tags.id) WHERE taggings.song = songs.id AND tags.name = {}'), {':': Ops.IN_LOWERCASE,}, Ops.IN_LOWERCASE),
+    'title': OpsConfig({'field': SQL('id'), 'table': SQL('songs'), 'table_value': SQL('id'), 'table_field': SQL('title')}, IN_STRING_OPS, Ops.IN_ILIKE),
+    'artist': OpsConfig({'field': SQL('artist'), 'table': SQL('artists'), 'table_value': SQL('id'), 'table_field': SQL('name')}, IN_STRING_OPS, Ops.IN_ILIKE),
+    'album': OpsConfig({'field': SQL('album'), 'table': SQL('albums'), 'table_value': SQL('id'), 'table_field': SQL('name')}, IN_STRING_OPS, Ops.IN_ILIKE),
+    'hash': OpsConfig(SQL('songs.hash'), STRING_OPS, Ops.ILIKE),
+    'audio': OpsConfig(SQL('songs.audio_hash'), STRING_OPS, Ops.ILIKE),
+    'path': OpsConfig(SQL('songs.path'), STRING_OPS, Ops.ILIKE),
+    'duration': OpsConfig(SQL('songs.duration'), NUM_OPS, Ops.PLAIN_EQUALS),
+    'fav': OpsConfig(SQL(
+        'SELECT 1 FROM users JOIN favorites ON (favorites.user_id = users.id) WHERE favorites.song = songs.id AND users.name = {}'),
+                     {':': Ops.IN_LOWERCASE, }, Ops.IN_LOWERCASE),
+    'tag': OpsConfig(SQL(
+        'SELECT 1 FROM taggings JOIN tags ON (taggings.tag = tags.id) WHERE taggings.song = songs.id AND tags.name = {}'),
+                     {':': Ops.IN_LOWERCASE, }, Ops.IN_LOWERCASE),
+
+    'favcount': OpsConfig(SQL('songs.favorite_count'), NUM_OPS, Ops.PLAIN_EQUALS),
+    'tagcount': OpsConfig(SQL('songs.tag_count'), NUM_OPS, Ops.PLAIN_EQUALS),
+    'playcount': OpsConfig(SQL('songs.play_count'), NUM_OPS, Ops.PLAIN_EQUALS),
 }
 
 # when no qualifier is given, look at all those; must have a default op
-UNQUALIFIERS = ('title', 'artist', 'tag')
+UNQUALIFIERS = ('title', 'artist', 'album', 'tag')
 
 QUICK = {
     '#': 'tag',
@@ -50,9 +71,10 @@ QUICK = {
 
 class Context:
     # not part of the AST
-    def __init__(self, artist=None, album=None):
+    def __init__(self, artist=None, album=None, audio=None):
         self.artist = artist
         self.album = album
+        self.audio = audio
 
 
 class String:
@@ -150,6 +172,7 @@ class Unqualified:
             oc = QUALIFIERS[qualifier]
             op = oc.default_op
             return OP_MAP[op](oc.field, self.search_term.build(context))
+
         return SQL('(') + SQL(' OR ').join(build_one(q) for q in UNQUALIFIERS) + SQL(')')
 
     def __repr__(self):
@@ -166,7 +189,7 @@ class Variable:
         self.oc = QUALIFIERS[name]
 
     def build(self, context):
-        return OP_MAP[Ops.EQUALS](self.oc.field, Literal(getattr(context, self.name)))
+        return OP_MAP[self.oc.supported_ops['=']](self.oc.field, Literal(getattr(context, self.name)))
 
     def __repr__(self):
         return f'{self.__class__.__name__}({self.name!r})'

@@ -11,10 +11,12 @@ class History(Base):
             name="song",
             nullable=False)
     song = sa.orm.relationship("Song")
+    source = sa.Column(sa.Text, nullable=True)
 
     def json(self):
         return dict(
             id=self.id,
             play_time=self.play_time.timestamp(),
             song=self.song.json(),
+            source=self.source,
         )

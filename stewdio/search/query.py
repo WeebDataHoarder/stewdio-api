@@ -8,16 +8,17 @@ SELECT
     songs.id AS id,
     songs.hash AS hash,
     songs.title AS title,
-    artists.name AS artist,
-    albums.name AS album,
+    (SELECT name FROM artists WHERE id = songs.artist) AS artist,
+    (SELECT name FROM albums WHERE id = songs.album) AS album,
     songs.path AS path,
     songs.duration AS duration,
     songs.status AS status,
+    songs.cover AS cover,
+    songs.play_count AS play_count,
+    songs.audio_hash AS audio_hash,
     ARRAY(SELECT tags.name FROM taggings JOIN tags ON (taggings.tag = tags.id) WHERE taggings.song = songs.id) AS tags,
     ARRAY(SELECT users.name FROM users JOIN favorites ON (favorites.user_id = users.id) WHERE favorites.song = songs.id) AS favored_by
 FROM songs
-JOIN artists ON songs.artist = artists.id
-JOIN albums ON songs.album = albums.id
 {where}
 ''')
 
@@ -25,6 +26,7 @@ JOIN albums ON songs.album = albums.id
 def search(cursor, context, query, limit=None):
     where = SQL("WHERE songs.status = 'active' AND ") + parse(query).build(context)
     q = BASE_QUERY.format(where=where)
+    q += SQL(' ORDER BY album ASC, path ASC ')
     if limit:
         q += SQL(' LIMIT ') + Literal(limit)
     cursor.execute(q)
@@ -33,12 +35,17 @@ def search(cursor, context, query, limit=None):
 
 def search_favorites(cursor, user):
     q = BASE_QUERY.format(where=SQL(' WHERE ') + Qualified('fav', String(user)).build(None))
+    q += SQL(' ORDER BY album ASC, path ASC ')
     cursor.execute(q, (user,))
     return [dict(r) for r in cursor]
 
 
-def get_random(cursor, off_vocal_regex=None):
-    where = SQL("WHERE songs.status = 'active'")
+def get_random(cursor, query, off_vocal_regex=None):
+    if query == '':
+        where = SQL("WHERE songs.status = 'active'")
+    else:
+        where = SQL("WHERE songs.status = 'active' AND ") + parse(query).build(None)
+
     if off_vocal_regex:
         where += SQL(' AND title !~* ') + Literal(off_vocal_regex)
     q = BASE_QUERY.format(where=where)
@@ -56,7 +63,7 @@ if __name__ == '__main__':
     cursor = conn.cursor(cursor_factory=DictCursor)
 
     q = """
-    (artist:mizuki OR artist:水樹) AND NOT fav:minus AND album:'supernal liberty'
+    (artist:mizuki OR artist:水樹) AND NOT fav:minus AND album:'supernal liberty' AND duration>10
     """
     if len(sys.argv) > 1:
         q = ' '.join(sys.argv[1:])

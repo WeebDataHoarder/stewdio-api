@@ -12,3 +12,7 @@ alembic
 sqlalchemy
 sqlalchemy-utils
 tinytag
+python-magic
+pillow
+ftfy
+audioread

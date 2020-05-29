@@ -18,6 +18,7 @@ class Song(Base):
     path = sa.Column(sa.Text, nullable=False)
     duration = sa.Column(sa.Integer)
     hash = sa.Column(sa.Text, unique=True)
+    audio_hash = sa.Column(sa.Text)
     added = sa.Column(sa.DateTime, server_default=sa.func.now())
 
     status = sa.Column(
@@ -46,14 +47,38 @@ class Song(Base):
             collection_class=set,
             back_populates="songs")
 
-    mb_metadata = sa.Column(sa.JSON)
+    favorite_count = sa.Column(sa.Integer,
+            default=0,
+            server_default=sa.text('0'),
+            nullable=False,
+            index=True)
+    tag_count = sa.Column(sa.Integer,
+            default=0,
+            server_default=sa.text('0'),
+            nullable=False,
+            index=True)
+    play_count = sa.Column(sa.Integer,
+            default=0,
+            server_default=sa.text('0'),
+            nullable=False,
+            index=True)
+
+    cover_id = sa.Column(sa.BIGINT,
+            sa.ForeignKey("covers.id"),
+            name="cover")
+    cover = sa.orm.relationship("Cover",
+            back_populates="songs")
+
+    mb_metadata = sa.Column(sa.JSON().with_variant(sa.dialects.postgresql.JSONB(none_as_null=True), 'postgresql'))
+    song_metadata = sa.Column(sa.JSON().with_variant(sa.dialects.postgresql.JSONB(none_as_null=True), 'postgresql'))
 
     def json(self):
         return dict(
             **{attr: getattr(self, attr)
-               for attr in ('id', 'title', 'path', 'duration', 'hash')},
+               for attr in ('id', 'title', 'path', 'duration', 'hash', 'play_count', 'audio_hash')},
             album=self.album.name if self.album else None,
             artist=self.artist.name if self.artist else None,
+            cover=self.cover_id,
             status=self.status.value,
             favored_by=[u.name for u in self.favored_by],
             tags=[t.name for t in self.tags],

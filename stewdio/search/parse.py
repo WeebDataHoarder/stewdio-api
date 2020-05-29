@@ -2,6 +2,7 @@
 
 from rply import ParserGenerator, LexerGenerator
 from .ast import *
+import re
 
 """
 EBNF:
@@ -24,30 +25,27 @@ subquery = LPAREN , query , RPAREN ;
 string = ( WORD | STRING ) ;
 """
 
-
 lg = LexerGenerator()
 lg.add('AND', r'AND')
 lg.add('OR', r'OR')
 lg.add('NOT', r'NOT')
-lg.add('WORD', r'[^:"\'()\s=<>\-#@/$][^:)\s=<>]*')
-lg.add('STRING', r'"[^"]*"|\'[^\']*\'')
+lg.add('WORD', r'[^:"\'()\s=~<>\-#@/$][^:)\s=~<>]*')
+lg.add('STRING', r'([\'"])(?:(?!\1|\\).|\\.)*\1')
 lg.add('MINUS', r'-')
 lg.add('LPAREN', r'\(')
 lg.add('RPAREN', r'\)')
-lg.add('OP', r'[:=<>]')
+lg.add('OP', r'[:=<>~]')
 lg.add('QUICK', r'[#@/]')
 lg.add('DOLLAR', r'\$')
 
 lg.ignore(r'\s+')
 
-
 pg = ParserGenerator(
-        [rule.name for rule in lg.rules],
-        precedence=[
-            ('left', ['AND', 'OR']),
-            ('left', ['NOT', 'MINUS']),
-            ])
-
+    [rule.name for rule in lg.rules],
+    precedence=[
+        ('left', ['AND', 'OR']),
+        ('left', ['NOT', 'MINUS']),
+    ])
 
 
 @pg.production('main : query')
@@ -75,7 +73,7 @@ def alias(p):
     s = p[0].value
     if p[0].name == 'STRING':
         s = s[1:-1]
-    return String(s)
+    return String(re.sub(r'\\([\\\'"])', '\\1', s))
 
 
 @pg.production('qualified : WORD OP string')
@@ -154,11 +152,12 @@ if __name__ == '__main__':
 (artist:mizuki OR artist:水樹) AND NOT fav:minus AND album:'supernal liberty' OR million AND #op AND duration>10
 """
     tokens = list(lexer.lex(q))
-    #for t in tokens:
+    # for t in tokens:
     #    print(t)
     print(q)
     ast = parser.parse(iter(tokens))
     print(ast)
     import psycopg2
+
     conn = psycopg2.connect('')
     print(ast.build(None).as_string(conn))
