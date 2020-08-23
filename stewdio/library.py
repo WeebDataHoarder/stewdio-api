@@ -113,7 +113,7 @@ def update(session, scan_dir, force=False):
                     continue
                 metadata = TinyTag.get(str(path), tags=True, duration=True, image=True)
                 if existingSong and existingSong.song_metadata:
-                    song_metadata = existingSong.song_metadata
+                    song_metadata = dict(existingSong.song_metadata)
                 else:
                     song_metadata = {}
 
@@ -124,6 +124,8 @@ def update(session, scan_dir, force=False):
                 artistStr = tryFixText(metadata.artist)
                 albumStr = tryFixText(metadata.album)
                 titleStr = tryFixText(metadata.title)
+
+                song_metadata['file_metadata'] = metadata.as_dict()
 
                 artist = session.query(Artist).filter_by(name=artistStr).one_or_none()
                 if not artist and metadata.artist:

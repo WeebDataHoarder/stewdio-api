@@ -16,6 +16,7 @@ SELECT
     songs.cover AS cover,
     songs.play_count AS play_count,
     songs.audio_hash AS audio_hash,
+    songs.song_metadata AS song_metadata,
     ARRAY(SELECT tags.name FROM taggings JOIN tags ON (taggings.tag = tags.id) WHERE taggings.song = songs.id) AS tags,
     ARRAY(SELECT users.name FROM users JOIN favorites ON (favorites.user_id = users.id) WHERE favorites.song = songs.id) AS favored_by
 FROM songs

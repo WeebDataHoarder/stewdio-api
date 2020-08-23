@@ -75,7 +75,7 @@ class Song(Base):
     def json(self):
         return dict(
             **{attr: getattr(self, attr)
-               for attr in ('id', 'title', 'path', 'duration', 'hash', 'play_count', 'audio_hash')},
+               for attr in ('id', 'title', 'path', 'duration', 'hash', 'play_count', 'audio_hash', 'song_metadata')},
             album=self.album.name if self.album else None,
             artist=self.artist.name if self.artist else None,
             cover=self.cover_id,
