@@ -24,19 +24,19 @@ FROM songs
 ''')
 
 
-def search(cursor, context, query, limit=None):
+def search(cursor, context, query, limit=None, order_by=' ORDER BY album ASC, path ASC '):
     where = SQL("WHERE songs.status = 'active' AND ") + parse(query).build(context)
     q = BASE_QUERY.format(where=where)
-    q += SQL(' ORDER BY album ASC, path ASC ')
+    q += SQL(order_by)
     if limit:
         q += SQL(' LIMIT ') + Literal(limit)
     cursor.execute(q)
     return [dict(r) for r in cursor]
 
 
-def search_favorites(cursor, user):
+def search_favorites(cursor, user, order_by=' ORDER BY album ASC, path ASC '):
     q = BASE_QUERY.format(where=SQL(' WHERE ') + Qualified('fav', String(user)).build(None))
-    q += SQL(' ORDER BY album ASC, path ASC ')
+    q += SQL(order_by)
     cursor.execute(q, (user,))
     return [dict(r) for r in cursor]
 

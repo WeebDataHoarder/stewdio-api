@@ -60,16 +60,35 @@ def requires_api_key_if_user_has_password(fn):
 
     return wrapper
 
+def getOrderByClause(orderBy, orderDirection):
+    if str(orderDirection).lower() == 'desc':
+        orderDirection = 'DESC'
+    else:
+        orderDirection = 'ASC'
+
+    if orderBy == 'albumPath' or orderBy == 'default' or orderBy == '' or orderBy == None:
+        return ' ORDER BY album ' + orderDirection + ', path ' + orderDirection + ' '
+    elif orderBy == 'score':
+        return ' ORDER BY (favorite_count * 5 + play_count + (CASE WHEN path ILIKE \'%.flac\' THEN 5 ELSE 0 END)) ' + orderDirection + ', path ' + orderDirection + ' '
+    elif orderBy == 'title':
+        return ' ORDER BY title ' + orderDirection + ', path ' + orderDirection + ' '
+    elif orderBy == 'favorites':
+        return ' ORDER BY favorite_count ' + orderDirection + ', path ' + orderDirection + ' '
+    elif orderBy == 'plays':
+        return ' ORDER BY play_count ' + orderDirection + ', path ' + orderDirection + ' '
+    else:
+        return ' ORDER BY album ' + orderDirection + ', path ' + orderDirection + ' '
 
 @app.route("/api/search/<q>")
 @with_pg_cursor
 @json_api
 @check_api_key
 def search(q, cur):
+    order_by = getOrderByClause(flask.request.args.get('orderBy'), flask.request.args.get('orderDirection'))
     limit = min(5000, max(50, int(flask.request.args.get("limit", 150)))) or None
     with db_session() as session:
         context = get_np_context(session)
-    return search_internal(cur, context, q, limit=limit)
+    return search_internal(cur, context, q, limit=limit, order_by=order_by)
 
 
 @app.route("/api/search")
@@ -78,10 +97,11 @@ def search(q, cur):
 @check_api_key
 def search2(cur):
     q = flask.request.args['q']
+    order_by = getOrderByClause(flask.request.args.get('orderBy'), flask.request.args.get('orderDirection'))
     limit = min(5000, max(50, int(flask.request.args.get("limit", 150)))) or None
     with db_session() as session:
         context = get_np_context(session)
-    return search_internal(cur, context, q, limit=limit)
+    return search_internal(cur, context, q, limit=limit, order_by=order_by)
 
 
 @app.route("/api/random")
@@ -321,8 +341,9 @@ def playing(session):
 @json_api
 @check_api_key
 def favorites(username, cur):
+    order_by = getOrderByClause(flask.request.args.get('orderBy'), flask.request.args.get('orderDirection'))
     username = username.lower()
-    return search_favorites(cur, username)
+    return search_favorites(cur, username, order_by=order_by)
 
 
 @app.route("/api/favorites/<username>/<hash>", methods=["GET"])
