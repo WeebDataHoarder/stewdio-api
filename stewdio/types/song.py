@@ -71,6 +71,7 @@ class Song(Base):
 
     mb_metadata = sa.Column(sa.JSON().with_variant(sa.dialects.postgresql.JSONB(none_as_null=True), 'postgresql'))
     song_metadata = sa.Column(sa.JSON().with_variant(sa.dialects.postgresql.JSONB(none_as_null=True), 'postgresql'))
+    lyrics = sa.Column(sa.JSON().with_variant(sa.dialects.postgresql.JSONB(none_as_null=True), 'postgresql'))
 
     def json(self):
         return dict(
@@ -82,6 +83,7 @@ class Song(Base):
             status=self.status.value,
             favored_by=[u.name for u in self.favored_by],
             tags=[t.name for t in self.tags],
+            lyrics=(list(dict(self.lyrics).keys()) if self.lyrics else []),
         )
 
     def __str__(self):

@@ -433,6 +433,16 @@ def history(session):
     return [h.json() for h in q]
 
 
+@app.route("/api/info/<hash>/lyrics/<lyric>")
+@with_db_session
+@check_api_key
+@json_api
+def info_lyrics(hash, lyric, session):
+    song = session.query(types.Song).filter(types.Song.hash.startswith(hash)).one_or_none()
+    if not song or not song.lyrics or lyric not in dict(song.lyrics):
+        return flask.Response(status=404)
+    return dict(song.lyrics).get(lyric)
+
 @app.route("/api/info/<hash>")
 @with_db_session
 @check_api_key

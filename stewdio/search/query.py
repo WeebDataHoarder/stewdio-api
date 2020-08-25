@@ -14,6 +14,7 @@ SELECT
     songs.duration AS duration,
     songs.status AS status,
     songs.cover AS cover,
+    ARRAY(SELECT jsonb_object_keys(songs.lyrics)) AS lyrics,
     songs.play_count AS play_count,
     songs.audio_hash AS audio_hash,
     songs.song_metadata AS song_metadata,

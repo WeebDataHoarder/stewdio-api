@@ -55,6 +55,8 @@ def clear_secret_data(msg: Any):
         del msg["tags"]
     if "source" in msg:
         del msg["source"]
+    if "lyrics" in msg:
+        del msg["lyrics"]
     if "play_count" in msg:
         del msg["play_count"]
     if "song_metadata" in msg:
