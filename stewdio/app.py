@@ -435,7 +435,6 @@ def history(session):
 
 @app.route("/api/info/<hash>/lyrics/<lyric>")
 @with_db_session
-@check_api_key
 @json_api
 def info_lyrics(hash, lyric, session):
     song = session.query(types.Song).filter(types.Song.hash.startswith(hash)).one_or_none()
