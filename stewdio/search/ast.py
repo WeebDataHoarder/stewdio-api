@@ -13,6 +13,7 @@ class Ops:
     PLAIN_EQUALS = 'PLAIN_EQUALS'
     GREATER_THAN = 'GREATER_THAN'
     LESS_THAN = 'LESS_THAN'
+    JSONB_KEY_EXISTS_LOWERCASE = 'JSONB_KEY_EXISTS_LOWERCASE'
 
 
 OP_MAP = {
@@ -25,6 +26,7 @@ OP_MAP = {
     'PLAIN_EQUALS': lambda k, v: k + SQL(' = ') + v,
     'GREATER_THAN': lambda k, v: k + SQL(' > ') + v,
     'LESS_THAN': lambda k, v: k + SQL(' < ') + v,
+    'JSONB_KEY_EXISTS_LOWERCASE': lambda k, v: k + SQL(' ? ') + SQL('lower({})').format(v),
 }
 
 
@@ -43,16 +45,17 @@ QUALIFIERS = {
     'title': OpsConfig({'field': SQL('id'), 'table': SQL('songs'), 'table_value': SQL('id'), 'table_field': SQL('title')}, IN_STRING_OPS, Ops.IN_ILIKE),
     'artist': OpsConfig({'field': SQL('artist'), 'table': SQL('artists'), 'table_value': SQL('id'), 'table_field': SQL('name')}, IN_STRING_OPS, Ops.IN_ILIKE),
     'album': OpsConfig({'field': SQL('album'), 'table': SQL('albums'), 'table_value': SQL('id'), 'table_field': SQL('name')}, IN_STRING_OPS, Ops.IN_ILIKE),
+    'lyrics': OpsConfig(SQL('songs.lyrics'), {':': Ops.JSONB_KEY_EXISTS_LOWERCASE, '=': Ops.JSONB_KEY_EXISTS_LOWERCASE, }, Ops.JSONB_KEY_EXISTS_LOWERCASE),
     'hash': OpsConfig(SQL('songs.hash'), STRING_OPS, Ops.ILIKE),
     'audio': OpsConfig(SQL('songs.audio_hash'), STRING_OPS, Ops.ILIKE),
     'path': OpsConfig(SQL('songs.path'), STRING_OPS, Ops.ILIKE),
     'duration': OpsConfig(SQL('songs.duration'), NUM_OPS, Ops.PLAIN_EQUALS),
     'fav': OpsConfig(SQL(
         'SELECT 1 FROM users JOIN favorites ON (favorites.user_id = users.id) WHERE favorites.song = songs.id AND users.name = {}'),
-                     {':': Ops.IN_LOWERCASE, }, Ops.IN_LOWERCASE),
+                     {':': Ops.IN_LOWERCASE, '=': Ops.IN_LOWERCASE }, Ops.IN_LOWERCASE),
     'tag': OpsConfig(SQL(
         'SELECT 1 FROM taggings JOIN tags ON (taggings.tag = tags.id) WHERE taggings.song = songs.id AND tags.name = {}'),
-                     {':': Ops.IN_LOWERCASE, }, Ops.IN_LOWERCASE),
+                     {':': Ops.IN_LOWERCASE, '=': Ops.IN_LOWERCASE }, Ops.IN_LOWERCASE),
 
     'favcount': OpsConfig(SQL('songs.favorite_count'), NUM_OPS, Ops.PLAIN_EQUALS),
     'tagcount': OpsConfig(SQL('songs.tag_count'), NUM_OPS, Ops.PLAIN_EQUALS),
