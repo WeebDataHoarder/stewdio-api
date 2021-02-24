@@ -48,7 +48,7 @@ def json_api(fn):
             status = ret[1]
             ret = ret[0]
         return flask.Response(
-            json.dumps(ret, ensure_ascii=False),
+            json.dumps(ret, ensure_ascii=False, separators=(',', ':')),
             status=status,
             headers={
                 "Content-Type": "application/json; charset=utf-8",

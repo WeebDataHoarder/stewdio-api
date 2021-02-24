@@ -69,7 +69,7 @@ def getOrderByClause(orderBy, orderDirection):
     if orderBy == 'albumPath' or orderBy == 'default' or orderBy == '' or orderBy == None:
         return ' ORDER BY album ' + orderDirection + ', path ' + orderDirection + ' '
     elif orderBy == 'score':
-        return ' ORDER BY (favorite_count * 5 + play_count + (CASE WHEN path ILIKE \'%.flac\' THEN 5 ELSE 0 END)) ' + orderDirection + ', path ' + orderDirection + ' '
+        return ' ORDER BY (favorite_count * 5 + play_count + (CASE WHEN path ILIKE \'%%.flac\' THEN 5 ELSE 0 END)) ' + orderDirection + ', path ' + orderDirection + ' '
     elif orderBy == 'title':
         return ' ORDER BY title ' + orderDirection + ', path ' + orderDirection + ' '
     elif orderBy == 'favorites':
