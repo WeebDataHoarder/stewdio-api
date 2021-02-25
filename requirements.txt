@@ -11,7 +11,7 @@ rply
 alembic
 sqlalchemy
 sqlalchemy-utils
-tinytag
+git+https://github.com/devsnd/tinytag@9c7bd666f753d0eb6eb8573c5574510ed366641e#egg=tinytag
 python-magic
 pillow
 ftfy
