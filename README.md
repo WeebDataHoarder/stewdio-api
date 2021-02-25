@@ -12,7 +12,7 @@ Stewdio API is the central piece of the Stewdio Radio System (SRS). It provides 
 - Set the database connection information in `alembic.ini`
 - Initialize the database:
   ```
-  $ python contrib/init_db.py
+  $ PYTHONPATH="." python contrib/init_db.py
   $ alembic stamp head
   ```
 - Run `run.sh` to start stewdio-api. Kawa should be running already,
