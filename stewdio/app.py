@@ -543,6 +543,7 @@ def ws_connect(ws: WebSocket):
         for index, song in enumerate(queue):
             queue[index] = pubsub.clear_secret_data(song)
         ws.send(json.dumps(dict(type='queue', data=dict(action="initial", queue=queue))))
+        ws.send(json.dumps(dict(type='queue', data=dict(action="random", song=pubsub.clear_secret_data(get_nr_json())))))
     pubsub.basic.register_client(ws)
 
 
@@ -554,6 +555,7 @@ def ws_connect(ws: WebSocket):
         ws.send(json.dumps(dict(type='playing', data=np)))
         ws.send(json.dumps(dict(type='listeners', data=_listeners(s))))
         ws.send(json.dumps(dict(type='queue', data=dict(action="initial", queue=_get_queue()))))
+        ws.send(json.dumps(dict(type='queue', data=dict(action="random", song=get_nr_json()))))
     pubsub.events.register_client(ws)
 
 
@@ -574,6 +576,9 @@ def get_np_json(session):
     np['started'] = hist.play_time.timestamp()
     return np
 
+def get_nr_json():
+    nr = requests.get(kawa('random')).json()
+    return nr
 
 def get_np_context(session):
     song = get_np_song(session)
@@ -605,6 +610,14 @@ def unlist(session):
     except NoResultFound as e:
         return {"error": "no matches"}, 400
 
+@app.route("/admin/random", methods=["POST"])
+def update_random():
+    nr = flask.request.get_json(force=True)
+
+    pubsub.events.queue(dict(action='random', song=nr))
+    pubsub.basic.queue(dict(action='random', song=nr.copy()))
+    return ""
+
 
 @app.route("/admin/playing", methods=["POST"])
 @with_db_session
@@ -624,12 +637,12 @@ def update_playing(session):
     pubsub.events.playing(np)
     pubsub.basic.queue(dict(action='remove', song=np.copy(), queue_id=queue_id))
     pubsub.basic.playing(np.copy())
+
     return ""
 
 
 @app.route("/admin/push", methods=["POST"])
-@with_db_session
-def update_push(session):
+def update_push():
     type = flask.request.values.get("type")
     data = json.loads(flask.request.values.get("data"))
     if hasattr(pubsub.events, type):
