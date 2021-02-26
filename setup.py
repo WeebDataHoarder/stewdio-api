@@ -6,8 +6,14 @@ import os
 
 ver = os.environ.get("PKGVER") or subprocess.run(['git', 'describe', '--tags'], stdout=subprocess.PIPE).stdout.decode().strip()
 
+reqs = []
 with open('requirements.txt') as f:
-    reqs = [l.strip() for l in f]
+    for l in f:
+        if l.find("=") != -1:
+            s = l.strip().split("=", 1)
+            reqs.append("{} @ {}".format(s[1], s[0]))
+        else:
+            reqs.append(l.strip())
 
 setup(
     name = 'stewdio',
