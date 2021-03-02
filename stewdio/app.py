@@ -507,7 +507,6 @@ def cover_thumb_large(id, session):
 
 @app.route("/api/status")
 @with_db_session
-@check_api_key
 @json_api
 def status(session):
     database = False
