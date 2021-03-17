@@ -26,7 +26,7 @@ OP_MAP = {
     'PLAIN_EQUALS': lambda k, v: k + SQL(' = ') + v,
     'GREATER_THAN': lambda k, v: k + SQL(' > ') + v,
     'LESS_THAN': lambda k, v: k + SQL(' < ') + v,
-    'JSONB_KEY_EXISTS_LOWERCASE': lambda k, v: k + SQL(' ? ') + SQL('lower({})').format(v),
+    'JSONB_KEY_EXISTS_LOWERCASE': lambda k, v: SQL('{}::jsonb').format(k) + SQL(' ? ') + SQL('lower({})').format(v),
 }
 
 
