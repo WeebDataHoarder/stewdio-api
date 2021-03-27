@@ -440,7 +440,8 @@ def info_lyrics(hash, lyric, session):
     if not song or not song.lyrics or lyric not in dict(song.lyrics):
         return flask.Response(status=404)
 
-    return flask.Response(status=200, response=dict(song.lyrics).get(lyric), mimetype="text/plain")
+    content = dict(song.lyrics).get(lyric)
+    return flask.Response(status=200, response=content, mimetype="text/plain", headers={'Content-Length': str(len(content))})
 
 @app.route("/api/info/<hash>")
 @with_db_session
