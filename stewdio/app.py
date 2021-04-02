@@ -336,6 +336,12 @@ def playing(session):
     return get_np_json(session)
 
 
+@app.route("/api/nr")
+@json_api
+@check_api_key
+def get_nr():
+    return get_nr_json()
+
 @app.route("/api/favorites/<username>")
 @with_pg_cursor
 @json_api
@@ -412,7 +418,6 @@ def _get_queue(session):
     for index, song in enumerate(queue):
         fixed_queue.append(session.query(types.Song).filter(types.Song.id == song["id"]).one().json())
     return fixed_queue
-
 
 @app.route("/api/queue")
 @json_api
