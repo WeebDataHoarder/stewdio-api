@@ -8,7 +8,7 @@ class Ops:
     IN_LOOSE_ILIKE = 'IN_LOOSE_ILIKE'
     IN_ILIKE = 'IN_ILIKE'
     IN_EQUALS = 'IN_EQUALS'
-    IN_LOWERCASE = 'IN_LOWERCASE'
+    IN_ID_LOWERCASE = 'IN_ID_LOWERCASE'
     EQUALS = 'EQUALS'
     PLAIN_EQUALS = 'PLAIN_EQUALS'
     GREATER_THAN = 'GREATER_THAN'
@@ -21,7 +21,7 @@ OP_MAP = {
     'IN_LOOSE_ILIKE': lambda k, v: k['field'] + SQL(' IN(SELECT ') + k['table_value'] + SQL(' FROM ') + k['table'] + SQL(' WHERE ') + k['table_field'] + SQL(" % ") + v + SQL(' ORDER BY similarity(') + k['table_field'] + SQL(', ') + v + SQL(') DESC, id ASC)'),
     'IN_ILIKE': lambda k, v: k['field'] + SQL(' IN(SELECT ') + k['table_value'] + SQL(' FROM ') + k['table'] + SQL(' WHERE ') + k['table_field'] + SQL(" ILIKE '%' || ") + v + SQL(" || '%'") + SQL(')'),
     'IN_EQUALS': lambda k, v: k['field'] + SQL(' IN(SELECT ') + k['table_value'] + SQL(' FROM ') + k['table'] + SQL(' WHERE ') + k['table_field'] + SQL(" ILIKE ") + v + SQL(')'),
-    'IN_LOWERCASE': lambda k, v: SQL('IN(') + k.format(SQL('lower({})').format(v)) + SQL(')'),
+    'IN_ID_LOWERCASE': lambda k, v: SQL('songs.id IN(') + k.format(SQL('lower({})').format(v)) + SQL(')'),
     'EQUALS': lambda k, v: k + SQL(' ILIKE ') + v,
     'PLAIN_EQUALS': lambda k, v: k + SQL(' = ') + v,
     'GREATER_THAN': lambda k, v: k + SQL(' > ') + v,
@@ -51,9 +51,9 @@ QUALIFIERS = {
     'path': OpsConfig(SQL('songs.path'), STRING_OPS, Ops.ILIKE),
     'duration': OpsConfig(SQL('songs.duration'), NUM_OPS, Ops.PLAIN_EQUALS),
     'fav': OpsConfig(SQL('SELECT song FROM favorites WHERE favorites.user_id = (SELECT id FROM users WHERE users.name = {})'),
-                     {':': Ops.IN_LOWERCASE, '=': Ops.IN_LOWERCASE }, Ops.IN_LOWERCASE),
+                     {':': Ops.IN_ID_LOWERCASE, '=': Ops.IN_LOWERCASE }, Ops.IN_ID_LOWERCASE),
     'tag': OpsConfig(SQL('SELECT song FROM taggings WHERE taggings.tag = (SELECT id FROM tags WHERE tags.name = {})'),
-                     {':': Ops.IN_LOWERCASE, '=': Ops.IN_LOWERCASE }, Ops.IN_LOWERCASE),
+                     {':': Ops.IN_ID_LOWERCASE, '=': Ops.IN_ID_LOWERCASE }, Ops.IN_ID_LOWERCASE),
 
     'favcount': OpsConfig(SQL('songs.favorite_count'), NUM_OPS, Ops.PLAIN_EQUALS),
     'tagcount': OpsConfig(SQL('songs.tag_count'), NUM_OPS, Ops.PLAIN_EQUALS),
