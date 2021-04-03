@@ -51,7 +51,7 @@ QUALIFIERS = {
     'path': OpsConfig(SQL('songs.path'), STRING_OPS, Ops.ILIKE),
     'duration': OpsConfig(SQL('songs.duration'), NUM_OPS, Ops.PLAIN_EQUALS),
     'fav': OpsConfig(SQL('SELECT song FROM favorites WHERE favorites.user_id = (SELECT id FROM users WHERE users.name = {})'),
-                     {':': Ops.IN_ID_LOWERCASE, '=': Ops.IN_LOWERCASE }, Ops.IN_ID_LOWERCASE),
+                     {':': Ops.IN_ID_LOWERCASE, '=': Ops.IN_ID_LOWERCASE }, Ops.IN_ID_LOWERCASE),
     'tag': OpsConfig(SQL('SELECT song FROM taggings WHERE taggings.tag = (SELECT id FROM tags WHERE tags.name = {})'),
                      {':': Ops.IN_ID_LOWERCASE, '=': Ops.IN_ID_LOWERCASE }, Ops.IN_ID_LOWERCASE),
 
