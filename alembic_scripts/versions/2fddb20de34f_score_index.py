@@ -15,6 +15,11 @@ import sqlalchemy as sa
 
 def upgrade():
     op.execute('CREATE EXTENSION IF NOT EXISTS pg_trgm;')
+    op.create_index('songs_trgm_path_idx', 'songs', ['path'], postgresql_using='gin',
+                    postgresql_ops={
+                        'path': 'gin_trgm_ops',
+                    }, unique=False)
+    op.create_unique_constraint('songs_path_pkey', 'songs', ['path'])
     op.add_column('songs', sa.Column('score', sa.Integer()))
     op.execute('''
         UPDATE songs
@@ -23,12 +28,6 @@ def upgrade():
     ''')
     op.alter_column('songs', 'score', nullable=False)
     op.create_index('songs_score_idx', 'songs', ['score'], unique=False)
-
-    op.create_index('songs_trgm_path_idx', 'songs', ['path'], postgresql_using='gin',
-                    postgresql_ops={
-                        'path': 'gin_trgm_ops',
-                    }, unique=False)
-    op.create_unique_constraint('songs_path_pkey', 'songs', ['path'])
     op.execute('''
         CREATE FUNCTION update_song_score() RETURNS TRIGGER
         AS '
