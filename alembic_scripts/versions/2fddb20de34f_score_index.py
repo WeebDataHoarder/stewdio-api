@@ -32,10 +32,12 @@ def upgrade():
         CREATE FUNCTION update_song_score() RETURNS TRIGGER
         AS '
             BEGIN
-            UPDATE songs
-            SET
-            score = (songs.favorite_count * 5 + songs.play_count + (CASE WHEN songs.path ILIKE \'\'%%.flac\'\' THEN 5 ELSE 0 END))
-            WHERE songs.id = COALESCE(NEW.id, OLD.id);
+            IF NEW.favorite_count <> OLD.favorite_count OR NEW.play_count <> OLD.play_count THEN
+                UPDATE songs
+                SET
+                score = (songs.favorite_count * 5 + songs.play_count + (CASE WHEN songs.path ILIKE \'\'%%.flac\'\' THEN 5 ELSE 0 END))
+                WHERE songs.id = COALESCE(NEW.id, OLD.id);
+            END IF;
             RETURN NULL;
             END
         ' LANGUAGE PLPGSQL;
