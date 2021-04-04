@@ -8,8 +8,8 @@ SELECT
     songs.id AS id,
     songs.hash AS hash,
     songs.title AS title,
-    (SELECT name FROM artists WHERE id = songs.artist) AS artist,
-    (SELECT name FROM albums WHERE id = songs.album) AS album,
+    (SELECT artists.name FROM artists WHERE songs.artist = artists.id LIMIT 1) AS artist,
+    (SELECT albums.name FROM albums WHERE songs.album = albums.id LIMIT 1) AS album,    
     songs.path AS path,
     songs.duration AS duration,
     songs.status AS status,
@@ -19,7 +19,7 @@ SELECT
     songs.play_count AS play_count,
     songs.audio_hash AS audio_hash,
     songs.song_metadata AS song_metadata,
-    ARRAY(SELECT tags.name FROM taggings JOIN tags ON (taggings.tag = tags.id) WHERE taggings.song = songs.id) AS tags,
+    ARRAY(SELECT tags.name FROM tags JOIN taggings ON (taggings.tag = tags.id) WHERE taggings.song = songs.id) AS tags,
     ARRAY(SELECT users.name FROM users JOIN favorites ON (favorites.user_id = users.id) WHERE favorites.song = songs.id) AS favored_by
 FROM songs
 {where}
