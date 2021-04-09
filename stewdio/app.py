@@ -212,7 +212,7 @@ def queue_remove_head(user, session):
     old_queue = _get_queue()
     song = requests.delete(kawa('queue/head')).json()
     song = old_queue.pop(0)
-    song["source"] = "@" + user.name;
+    song["source"] = "@" + user.name
     queue_id = song.get('queue_id')
     pubsub.events.queue(dict(action='remove', song=song, queue_id=queue_id))
     pubsub.basic.queue(dict(action='remove', song=song.copy(), queue_id=queue_id))

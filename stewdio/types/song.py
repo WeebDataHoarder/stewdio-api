@@ -62,6 +62,11 @@ class Song(Base):
             server_default=sa.text('0'),
             nullable=False,
             index=True)
+    score = sa.Column(sa.Integer,
+            default=0,
+            server_default=sa.text('0'),
+            nullable=False,
+            index=True)
 
     cover_id = sa.Column(sa.BIGINT,
             sa.ForeignKey("covers.id"),
