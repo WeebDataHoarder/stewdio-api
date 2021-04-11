@@ -11,7 +11,7 @@ from operator import attrgetter
 from pathlib import Path
 from typing import NamedTuple
 
-from PIL import Image
+from PIL import features, Image
 from io import BytesIO
 
 import acoustid
@@ -88,6 +88,9 @@ def update(session, scan_dir, force=False):
     scan_dir = Path(scan_dir)
     L.info(f"Scanning directory {scan_dir} for new files")
     warnings.simplefilter('error', Image.DecompressionBombWarning)
+
+    image_format = "WEBP" if features.check_module('webp') else "JPEG"
+
     for root, dirs, files in os.walk(scan_dir):
         root = Path(root)
         for path in sorted(files):
@@ -215,11 +218,11 @@ def update(session, scan_dir, force=False):
                             thumb_small = im.copy()
                             thumb_small.thumbnail((55, 55), Image.LANCZOS)
                             small = BytesIO()
-                            thumb_small.save(small, format='JPEG', quality=80, optimize=True, progressive=True)
+                            thumb_small.save(small, format=image_format, quality=80, method=6, optimize=True, progressive=True)
                             thumb_large = im.copy()
                             thumb_large.thumbnail((800, 800), Image.LANCZOS)
                             large = BytesIO()
-                            thumb_large.save(large, format='JPEG', quality=95, optimize=True, progressive=True)
+                            thumb_large.save(large, format=image_format, quality=95, method=6, optimize=True, progressive=True)
                             cover = Cover(hash=image_hash, type=image_type, mime=image_mime, data=image_data,
                                           thumb_small=small.getvalue(), thumb_large=large.getvalue())
                         except Exception as e:

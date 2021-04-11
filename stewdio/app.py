@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import random
+import magic
 from datetime import datetime
 from functools import wraps
 from urllib.parse import urlsplit, parse_qs, unquote, quote
@@ -481,13 +482,17 @@ def cover_thumb_small(id, session):
     mime = None
     if cover.thumb_small:
         data = cover.thumb_small
-        mime = "image/jpeg"
     if not data and cover.thumb_large:
         data = cover.thumb_large
-        mime = "image/jpeg"
     if not data:
         data = cover.data
         mime = cover.mime
+
+    if not mime:
+        try:
+            mime = magic.from_buffer(data, mime=True)
+        except Exception as e:
+            mime = "image/jpeg"
 
     return flask.Response(status=200, response=data, mimetype=mime)
 
@@ -503,10 +508,15 @@ def cover_thumb_large(id, session):
     mime = None
     if cover.thumb_large:
         data = cover.thumb_large
-        mime = "image/jpeg"
     if not data:
         data = cover.data
         mime = cover.mime
+
+    if not mime:
+        try:
+            mime = magic.from_buffer(data, mime=True)
+        except Exception as e:
+            mime = "image/jpeg"
 
     return flask.Response(status=200, response=data, mimetype=mime)
 
