@@ -243,7 +243,7 @@ def download(hash, session):
     path = song.path
     db_user = find_user_by_api_key(session, flask.request)
     if not db_user:
-        rate_limit = str(int(max(os.path.getsize(path) / song.duration + 100000, 300000)))
+        rate_limit = str(int(max(os.path.getsize(path) / song.duration + 200000, 300000)))
     else:
         rate_limit = "off"
 
@@ -255,11 +255,11 @@ def download(hash, session):
         file_expr = "filename*=utf-8''{}".format(quote(os.path.basename(path)))
     if not os.path.exists(path.encode('utf-8')):
         return flask.Response(status=404)
-    return flask.Response(status=206, direct_passthrough=True,
+    return flask.Response(status=200, direct_passthrough=True,
                           headers={'Content-Type': '', 'X-Accel-Redirect': quote(path.encode('utf-8')),
                                    'X-Accel-Limit-Rate': rate_limit, 'Accept-Ranges': 'bytes',
                                    'X-Accel-Buffering': 'no', 'Content-Transfer-Encoding': 'binary',
-                                   'Content-Disposition': 'inline; {}'.format(file_expr)})
+                                   'X-Accel-Expires': '2592000', 'Content-Disposition': 'inline; {}'.format(file_expr)})
 
 
 def _get_listener_header(listener, h):
