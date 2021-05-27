@@ -197,7 +197,7 @@ def request_random2(user, session, cur):
 @with_db_session
 @requires_api_key
 def skip(user, session):
-    if _listeners(session)["num_listeners"] <= 2:
+    if _listeners(session)["num_listeners"] <= 1:
         song = requests.post(kawa('skip')).json()
         song["source"] = "@" + user.name
         queue_id = song.get('queue_id')
