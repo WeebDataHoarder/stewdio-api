@@ -237,7 +237,7 @@ def queue_remove_tail(user, session):
 @app.route("/api/download/<hash>")
 @with_db_session
 def download(hash, session):
-    song = session.query(types.Song).filter(types.Song.hash.startswith(hash)).one_or_none()
+    song = session.query(types.Song).filter(types.Song.hash.ilike(hash)).one_or_none()
     if not song:
         return flask.Response(status=404)
     path = song.path
