@@ -1,6 +1,7 @@
 pyacoustid
 flask
 flask-sockets
+Werkzeug==1.0.1
 gevent
 gevent-websocket
 gunicorn
